@@ -5,7 +5,7 @@ import { Marionette } from './marionette.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const extDir = path.resolve(process.argv[2] ?? 'testext');
+const extDir = path.resolve(process.argv[2] ?? 'work/testext');
 const outDir = process.argv[3] ?? (await import('node:os')).tmpdir();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const m = new Marionette();

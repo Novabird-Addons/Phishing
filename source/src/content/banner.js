@@ -4,6 +4,10 @@
   const api = typeof messenger !== 'undefined' ? messenger : browser;
   if (window !== window.top) return;
   if (document.getElementById('phishing-pilot-banner')) return;
+  // Nur ein Banner pro Mail: Läuft das Skript doppelt (zweite Kopie des Add-ons, z. B. eine ältere Version mit anderer
+  // ID, oder erneute Einbindung), übernimmt die erste Instanz – die übrigen halten sich heraus.
+  if (document.documentElement.dataset.ppClaim) return;
+  document.documentElement.dataset.ppClaim = api.runtime.id;
 
   const state = { danger: false, trusted: false, host: null, mode: 'inline', defanged: false };
 
@@ -14,6 +18,13 @@
   function attach() {
     const host = state.host;
     if (!host || state.trusted || !document.body) return;
+    // Ältere Versionen kennen die Markierung oben nicht: Zeigt eine andere Kopie schon ein Banner, zieht sich dieses zurück
+    if ([...document.querySelectorAll('#phishing-pilot-banner')].some((el) => el !== host)) {
+      host.remove();
+      state.host = null;
+      state.trusted = true;   // nicht erneut einblenden
+      return;
+    }
     if (state.mode === 'fixed') {
       if (document.documentElement.lastElementChild !== host) document.documentElement.append(host);
       return;
