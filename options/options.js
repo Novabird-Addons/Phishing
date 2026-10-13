@@ -2,6 +2,7 @@ import { BUNDLED, MAX_LANGUAGES, installLanguage, installedLanguages, modelInfo,
 import { OCR_MODELS } from '../src/data/ocr-languages.js';
 import { HISTORY_MONTHS_DEFAULT, historyMonths, isSkippedFolder } from '../src/lib/history.js';
 import { isCollectedBook, trustedBookIds } from '../src/lib/contacts.js';
+import { t } from '../src/i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const lines = (s) => s.split('\n').map((x) => x.trim().toLowerCase()).filter(Boolean);
@@ -11,7 +12,13 @@ try { displayNames = new Intl.DisplayNames([navigator.language], { type: 'langua
 function langName(code) {
   try { return displayNames?.of(code) ?? code; } catch { return code; }   // Tesseract-Codes wie chi_sim sind keine Sprachcodes
 }
-const mb = (bytes) => (bytes / 1e6).toFixed(1).replace('.', ',') + ' MB';
+const uiLang = messenger.i18n.getUILanguage();
+const tr = (key, ...params) => t(uiLang, key, params);
+const mb = (bytes) => (bytes / 1e6).toFixed(1).replace('.', uiLang.startsWith('de') ? ',' : '.') + ' MB';
+// Texte der Seite: data-i18n = reiner Text, data-i18n-html = eigener Text mit <code>/<b> (nur aus i18n.js, nie aus Mails)
+document.documentElement.lang = uiLang;
+for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = tr(el.dataset.i18n);
+for (const el of document.querySelectorAll('[data-i18n-html]')) el.innerHTML = tr(el.dataset.i18nHtml);
 
 (async () => {
   const { config = {} } = await messenger.storage.local.get('config');
@@ -25,13 +32,13 @@ const mb = (bytes) => (bytes / 1e6).toFixed(1).replace('.', ',') + ' MB';
       const label = document.createElement('label');
       const cb = Object.assign(document.createElement('input'), { type: 'checkbox', value: code, checked: selected.has(code) });
       cb.addEventListener('change', () => {
-        if (cb.checked && selected.size >= MAX_LANGUAGES) { cb.checked = false; $('langStatus').textContent = `Höchstens ${MAX_LANGUAGES} Sprachen.`; return; }
+        if (cb.checked && selected.size >= MAX_LANGUAGES) { cb.checked = false; $('langStatus').textContent = tr('opt_max_langs', MAX_LANGUAGES); return; }
         cb.checked ? selected.add(code) : selected.delete(code);
         $('langStatus').textContent = '';
       });
-      label.append(cb, ` ${langName(code)} (${code})${BUNDLED.includes(code) ? ' – mitgeliefert' : ''}`);
+      label.append(cb, ` ${langName(code)} (${code})${BUNDLED.includes(code) ? ' – ' + tr('opt_bundled') : ''}`);
       if (!BUNDLED.includes(code)) {
-        const rm = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Entfernen' });
+        const rm = Object.assign(document.createElement('button'), { type: 'button', textContent: tr('opt_remove') });
         rm.addEventListener('click', async () => { await removeLanguage(code); selected.delete(code); await renderLanguages(); });
         label.append(rm);
       }
@@ -48,18 +55,16 @@ const mb = (bytes) => (bytes / 1e6).toFixed(1).replace('.', ',') + ' MB';
     const info = modelInfo(code);
     if (!info) return;
     // Rückfrage: Das ist eine Verbindung ins Internet.
-    const ok = confirm(`Jetzt eine Verbindung ins Internet aufbauen?\n\nDas Add-on lädt die Sprachdatei „${langName(code)}“ (${code}.traineddata, ${mb(info.size)}) ` +
-      `von raw.githubusercontent.com (GitHub, Projekt tesseract-ocr/tessdata_fast, Apache-2.0).\n\n` +
-      `Es werden keine Daten aus deinen Mails gesendet. Die Datei wird gegen eine feste Prüfsumme geprüft.`);
+    const ok = confirm(tr('opt_download_confirm', langName(code), code, mb(info.size)));
     if (!ok) return;
     $('addLangBtn').disabled = true;
-    $('langStatus').textContent = 'Lade …';
+    $('langStatus').textContent = tr('opt_loading');
     try {
       await installLanguage(code);
       if (selected.size < MAX_LANGUAGES) selected.add(code);
-      $('langStatus').textContent = 'Fertig.';
+      $('langStatus').textContent = tr('opt_done');
     } catch (e) {
-      $('langStatus').textContent = 'Fehler: ' + (e?.message ?? e);
+      $('langStatus').textContent = tr('opt_error', e?.message ?? e);
     } finally {
       $('addLangBtn').disabled = false;
       await renderLanguages();
@@ -94,7 +99,7 @@ const mb = (bytes) => (bytes / 1e6).toFixed(1).replace('.', ',') + ' MB';
       }
     }
     foldersLoaded = true;
-  } catch (e) { $('folders').textContent = 'Ordner konnten nicht gelesen werden: ' + (e?.message ?? e); }
+  } catch (e) { $('folders').textContent = tr('opt_folders_error', e?.message ?? e); }
 
   $('mode').value = config.mode ?? 'active';
   $('ocr').checked = config.ocr ?? true;
@@ -108,7 +113,7 @@ const mb = (bytes) => (bytes / 1e6).toFixed(1).replace('.', ',') + ' MB';
     const box = Object.assign(document.createElement('input'), {
       type: 'checkbox', value: book.id, checked: usedBooks.includes(book.id),
     });
-    label.append(box, ' ' + book.name + (isCollectedBook(book) ? ' (automatisch gesammelt – Standard: aus)' : ''));
+    label.append(box, ' ' + book.name + (isCollectedBook(book) ? ` (${tr('opt_books_collected')})` : ''));
     $('books').append(label);
   }
   $('historyMonths').value = historyMonths(config.historyMonths ?? HISTORY_MONTHS_DEFAULT);
@@ -153,6 +158,8 @@ const mb = (bytes) => (bytes / 1e6).toFixed(1).replace('.', ',') + ' MB';
       },
     });
     if (foldersChanged || monthsChanged) messenger.runtime.sendMessage({ type: 'rescanHistory' }).catch(() => {});
+    $('saveStatus').textContent = tr('opt_saved');
+    setTimeout(() => { $('saveStatus').textContent = ''; }, 2500);
   });
   $('export').addEventListener('click', async () => {
     const { shadowLog = [] } = await messenger.storage.local.get('shadowLog');

@@ -1,72 +1,75 @@
 # Novabird-phishing
 
-**Warnt in Thunderbird und Betterbird vor Phishing- und Betrugs-Mails – direkt im Mailprogramm, ohne Cloud, ohne dass eine Mail deinen Rechner verlässt.**
+🇩🇪 [Deutsche Version](README.de.md)
 
-![Warnung bei einer gefälschten PayPal-Mail](docs/screenshots/01-uebersicht-gefaehrlich.png)
+**Warns you about phishing and scam emails in Thunderbird and Betterbird – right inside your mail client, without any cloud service, and without a single message leaving your computer.**
 
-## So sieht es aus
+![Warning on a fake PayPal message](docs/screenshots/01-overview-dangerous.png)
 
-| Farbe | Bedeutung | Was passiert |
+## What it looks like
+
+| Colour | Meaning | What happens |
 |---|---|---|
-| 🟥 **Rot – „Warnung“** | sehr wahrscheinlich Phishing oder Erpressung | Banner über der Mail, Tag in der Liste, **Links gesperrt** – ein Klick fragt erst nach |
-| 🟨 **Gelb – „Vorsicht“** | verdächtig, genauer hinsehen | Banner und Tag, Links bleiben klickbar |
-| – | unauffällig | nichts, die Mail sieht aus wie immer |
+| 🟥 **Red – “Warning”** | very likely phishing or extortion | banner above the message, tag in the message list, **links are blocked** – a click asks first |
+| 🟨 **Yellow – “Caution”** | suspicious, take a closer look | banner and tag, links stay clickable |
+| – | inconspicuous | nothing, the message looks as usual |
 
-Mit **„Warum?“** zeigt das Banner alle Gründe, mit **„Diesem Absender vertrauen“** schaltest du Warnungen für einen Absender ab (mit Rückfrage).
+The banner shows the two most important reasons right away. **“Why?”** lists all reasons with the points each one adds, and **“Trust this sender”** turns warnings off for one sender (after asking you to confirm).
 
-## Worauf es achtet
+## What it looks for
 
-- **Name und Adresse passen nicht zusammen** – „Deutsche Kreditbank AG“ schreibt von `irgendwas.de`, „PayPal“ von einer fremden Domain.
-- **Gefälschte Links** – der Link zeigt `www.paypal.com` an, führt aber woanders hin; nachgemachte Adressen wie `paypa1.com`.
-- **Bekannte Namen von neuen Adressen** – „Chef Mustermann“ steht in deinen Kontakten, schreibt aber plötzlich von einer anderen Adresse.
-- **Antworten ohne Vorgeschichte** – „AW: …“, obwohl du nie geschrieben hast.
-- **Köder in Bildern** – ein Bild „Dokument anzeigen“ (Texterkennung, lokal) oder ein **QR-Code**, der auf eine fremde Seite führt.
-- **Erpressungs-Mails** („Ich habe Ihre Kamera gehackt … zahlen Sie in Bitcoin“) und **Krypto-Lockangebote**.
-- **Typische Fälscher-Spuren** – Impressum und Datenschutz führen ins Leere, zufällig aussehende Absender-Domains.
+- **Name and address don’t match** – “Deutsche Kreditbank AG” writing from `something-else.com`, “PayPal” from a foreign domain.
+- **Fake links** – the link *shows* `www.paypal.com` but leads somewhere else; look-alike addresses such as `paypa1.com`.
+- **Known names from new addresses** – “Chris Miller” is in your contacts but suddenly writes from a different address.
+- **Replies out of nowhere** – “Re: …” although you never wrote to them.
+- **Bait in images** – a picture saying “View document” (text recognition, done locally) or a **QR code** pointing to a foreign site.
+- **Extortion emails** (“I hacked your camera … pay in Bitcoin”) and **crypto investment lures**.
+- **Typical forger traces** – legal notice and privacy links that lead nowhere, random-looking sender domains.
 
-## Was ist besser als die eingebaute Prüfung von Thunderbird?
+## What’s better than Thunderbird’s built-in check?
 
-Thunderbird prüft im Wesentlichen nur Links (Zahlen-Adressen statt Namen, angezeigte gegen echte Adresse) und vergisst, wenn du eine Warnung wegklickst. Novabird-phishing
+Thunderbird mainly checks links (numeric addresses instead of names, displayed vs. real address) and forgets when you dismiss a warning. Novabird-phishing
 
-- prüft **Absender, Kontakte, Gesprächsverlauf, Bilder und Inhalt**, nicht nur Links,
-- **erklärt jede Warnung** und zeigt die Punkte pro Grund,
-- **merkt sich**, wem du vertraust,
-- kennt **rund 1.250 Banken in der EU** (aus Wikidata) und die meistgefälschten Marken – und lernt die Firmen, die *dir* schreiben,
-- warnt **lieber selten und richtig**: Bei 97 echten Mails (Bestellungen, Newsletter, Rechnungen) blieben 94 ohne Warnung, bei 17 echten Phishing-Mails gab es 17 Warnungen. (Die Regeln wurden an diesen Mails abgestimmt – die Quote im Alltag kann abweichen.)
+- checks **sender, contacts, conversation history, images and content**, not just links,
+- **explains every warning** and shows the points per reason,
+- **remembers** whom you trust,
+- knows **about 1,250 banks across the EU** (from Wikidata) and the most frequently forged brands – and learns the companies that write to *you*,
+- prefers to **warn rarely but correctly**: of 97 real messages (orders, newsletters, invoices) 94 got no warning, and all 17 real phishing messages got one. (The rules were tuned on these messages – results in everyday use may differ.)
 
-## Wie „lernt“ es?
+## How does it “learn”?
 
-Ohne KI und ohne Cloud. Beim ersten Start liest das Add-on nur **Absender, Empfänger und Datum** der Mails der letzten 12 Monate:
+No AI, no cloud. On first start the add-on reads only the **sender, recipients and date** of your messages from the last 12 months:
 
-- Wem **du selbst geschrieben** hast, gilt als bekannt.
-- Wer **regelmäßig und unauffällig** schreibt („Velomarkt“ von `velomarkt.de`), dessen Name wird gemerkt. Schreibt derselbe Name später von einer fremden Adresse, gibt es eine Warnung ([Beispiel](docs/screenshots/07-gelernter-absender.png)).
-- **Auffällige Mails werden nie gelernt.** Ein Betrüger kann sich so nicht „vertraut machen“.
+- Anyone **you have written to** counts as known.
+- Senders who write **regularly and inconspicuously** (“Velomarkt” from `velomarkt.com`) have their name remembered. If the same name later writes from a foreign address, you get a warning ([example](docs/screenshots/07-learned-sender.png)).
+- **Suspicious messages are never learned.** A scammer cannot make themselves “familiar” this way.
 
-Alles bleibt auf deinem Rechner. Es gibt keine Verbindung ins Internet – außer du lädst in den Einstellungen ausdrücklich eine weitere Sprache für die Texterkennung herunter (mit Rückfrage).
+Everything stays on your computer. The add-on makes no internet connections – unless you explicitly download another language for text recognition in the settings (it asks first).
 
-## Bilder
+## Screenshots
 
 | | |
 |---|---|
-| ![Gründe mit „Warum?“](docs/screenshots/02-warum-punkte.png) **„Warum?“** zeigt alle Gründe | ![Kontakt-Imitation](docs/screenshots/03-kontakt-imitation.png) **Kontakt von fremder Adresse** |
-| ![Erpressung](docs/screenshots/04-erpressung.png) **Erpressungs-Mail** | ![Bild-Köder](docs/screenshots/05-bild-koeder-ocr.png) **Köder-Bild „Dokument anzeigen“** |
-| ![QR-Code](docs/screenshots/06-qr-code.png) **QR-Code zu fremder Seite** | ![Gelernter Absender](docs/screenshots/07-gelernter-absender.png) **Bekannter Shop, fremde Adresse** |
-| ![Normale Mail](docs/screenshots/08-normale-mail.png) **Normale Mail: kein Banner** | ![Einstellungen](docs/screenshots/09-einstellungen.png) **Einstellungen** |
+| ![All reasons via “Why?”](docs/screenshots/02-why-points.png) **“Why?” shows every reason with its points** | ![Contact impersonation](docs/screenshots/03-contact-impersonation.png) **Known contact, new address** |
+| ![Extortion](docs/screenshots/04-extortion.png) **Extortion email** | ![Image bait](docs/screenshots/05-image-bait-ocr.png) **Bait image “View document”** |
+| ![QR code](docs/screenshots/06-qr-code.png) **QR code to a foreign site** | ![Learned sender](docs/screenshots/07-learned-sender.png) **Familiar shop, foreign address** |
+| ![Normal message](docs/screenshots/08-normal-mail.png) **Normal message: no banner** | ![Settings](docs/screenshots/09-settings.png) **Settings** |
 
 ## Installation
 
-1. Die Datei `novabird-phishing-<version>.xpi` aus den [Releases](https://github.com/Novabird-Addons/Phishing/releases) herunterladen (oder direkt aus dem Ordner [`releases/`](releases/)).
-2. Thunderbird: **Extras → Add-ons und Themes → Zahnrad → Add-on aus Datei installieren …**
-3. Beim ersten Start fragt ein kurzer Dialog, **welche Adressbücher deine echten Kontakte enthalten**. „Gesammelte Adressen“ ist dabei bewusst abgewählt: Dort landet automatisch jede Adresse, an die du einmal geschrieben hast – auch die eines Betrügers.
+1. Download `novabird-phishing-<version>.xpi` from the [releases](https://github.com/Novabird-Addons/Phishing/releases) (or directly from the [`releases/`](releases/) folder).
+2. In Thunderbird: **Tools → Add-ons and Themes → gear icon → Install Add-on From File …**
+3. On first start a short dialog asks **which address books contain your real contacts**. “Collected Addresses” is deliberately unchecked: Thunderbird automatically adds every address you ever wrote to – including a scammer’s.
 
-   ![Einrichtungsdialog](docs/screenshots/00-einrichtung.png)
+   ![Setup dialog](docs/screenshots/00-setup.png)
 
-Danach ist der Schutz eingeschaltet. Alles Weitere (Adressbücher, Texterkennung, vertraute Absender, Beobachtungsmodus ohne Warnungen) findest du in den Einstellungen des Add-ons.
+After that, protection is on. Everything else (address books, text recognition, trusted senders, an observation mode without warnings) is in the add-on’s settings.
 
-## Gut zu wissen
+## Good to know
 
-- Ersetzt nicht den Spamfilter deines Mail-Anbieters, sondern ergänzt ihn.
-- Kann sich irren – in beide Richtungen. Im Zweifel: Absender auf anderem Weg fragen, keine Daten eingeben.
-- Getestet mit Thunderbird 157. Betterbird ist das Ziel, aber noch nicht getestet. Das Add-on ist noch nicht signiert.
+- It complements your mail provider’s spam filter; it doesn’t replace it.
+- It can be wrong – in both directions. When in doubt, ask the sender through another channel and don’t enter any data.
+- The user interface is available in English and German.
+- Tested with Thunderbird 157. Betterbird is the target but not yet tested. The add-on is not signed yet.
 
-Lizenz: MIT. Technik, Entscheidungen und Versionsgeschichte: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) · Fremdbestandteile: [THIRD_PARTY.md](THIRD_PARTY.md)
+License: MIT. Technical details, decisions and version history (in German): [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) · Third-party components: [THIRD_PARTY.md](THIRD_PARTY.md)
