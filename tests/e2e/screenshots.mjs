@@ -6,7 +6,7 @@ import { Marionette } from './marionette.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const extDir = path.resolve(process.argv[2] ?? 'testext');
+const extDir = path.resolve(process.argv[2] ?? 'work/testext');
 const LANG = process.argv[3] === 'en' ? 'en' : 'de';
 const outDir = path.resolve(LANG === 'en' ? 'docs/screenshots' : 'docs/screenshots/de');
 // Demo-Texte je Sprache (alle Adressen erfunden, Domains *.example)

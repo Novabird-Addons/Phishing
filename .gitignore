@@ -1,8 +1,4 @@
-testext/
-testprofile/
-phishingset/
-testconv/
-legitset/
-andere addons/
+work/
+testdata/
 dist/
 node_modules/

@@ -52,7 +52,7 @@ const rows = await m.script(`
       const sr = el.openOrClosedShadowRoot;
       const root = cd.getElementById("nbc-root");
       const geo = root ? { overflow: root.scrollHeight - root.clientHeight, bannerH: Math.round(el.getBoundingClientRect().height), listH: Math.round((cd.querySelector(".nbc-list, .nbc-history") ?? root).getBoundingClientRect().height), rootH: root.clientHeight } : null;
-      return { guard: (el.dataset.ppGuard ?? '-') + ' ' + (el.dataset.ppWhy ?? ''), geo, where: el.parentNode === root ? "in-root" : el.parentNode === cd.body ? "body" : "andere", conv: !!root, title: sr.querySelector("h1").textContent.slice(0, 12), reasons: sr.querySelectorAll("li").length, score: sr.querySelector(".small").textContent.slice(0, 22) };
+      return { count: cd.querySelectorAll("#phishing-pilot-banner").length, guard: (el.dataset.ppGuard ?? '-') + ' ' + (el.dataset.ppWhy ?? ''), geo, where: el.parentNode === root ? "in-root" : el.parentNode === cd.body ? "body" : "andere", conv: !!root, title: sr.querySelector("h1").textContent.slice(0, 12), reasons: sr.querySelectorAll("li").length, score: sr.querySelector(".small").textContent.slice(0, 22) };
     } catch (e) { return { err: String(e) }; }
   };
   for (let round = 0; round < rounds; round++) {
@@ -69,7 +69,7 @@ let missing = 0;
 for (const r of rows) {
   const none = !r.banner || r.banner.missing;
   if (none) missing++;
-  console.log(`r${r.round} #${String(r.i).padStart(2)} ${none ? `--- KEIN BANNER --- (Konversation aktiv: ${r.banner?.conv})` : (r.banner.err ?? `${r.banner.title} ${r.banner.score} [Schutz:${r.banner.guard} ${r.banner.where}${r.banner.geo ? `, root ${r.banner.geo.rootH}px: Banner ${r.banner.geo.bannerH}px + Liste ${r.banner.geo.listH}px, Überlauf ${r.banner.geo.overflow}px` : ''}]`)}  | ${r.subject}`);
+  console.log(`r${r.round} #${String(r.i).padStart(2)} ${none ? `--- KEIN BANNER --- (Konversation aktiv: ${r.banner?.conv})` : (r.banner.err ?? `${r.banner.count > 1 ? `DOPPELT(${r.banner.count}) ` : ''}${r.banner.title} ${r.banner.score} [Schutz:${r.banner.guard} ${r.banner.where}${r.banner.geo ? `, root ${r.banner.geo.rootH}px: Banner ${r.banner.geo.bannerH}px + Liste ${r.banner.geo.listH}px, Überlauf ${r.banner.geo.overflow}px` : ''}]`)}  | ${r.subject}`);
 }
 console.log(`\n${rows.length - missing} von ${rows.length} mit Banner (Wartezeit ${waitMs} ms)`);
 await m.send('Marionette:Quit', { flags: ['eForceQuit'] }).catch(() => {});

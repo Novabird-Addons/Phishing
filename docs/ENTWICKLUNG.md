@@ -92,7 +92,7 @@ Bild (mindestens zwei Begriffe plus Dringlichkeit, z. B. Bitcoin + investieren +
 Die Konversationsansicht ersetzt den Inhalt des Nachrichtendokuments (`document.body.replaceChildren()`) und baut
 `#nbc-root` auf, auch nachträglich. Das Banner hängt sich deshalb als erstes Element in `#nbc-root` (sonst in den `<body>`)
 und wird per `MutationObserver` wieder angehängt, wenn der Inhalt ersetzt wird (`source/src/content/banner.js`).
-Test: `EXTRA_ADDONS=<conversation-ordner> node tests/e2e/clickthrough.mjs testext phishingset 600`
+Test: `EXTRA_ADDONS=<conversation-ordner> node tests/e2e/clickthrough.mjs work/testext testdata/phishingset 600`
 (Conversation rendert einzelne Mails nur mit `alwaysRender: true`).
 
 ## Bekannte Grenzen
@@ -200,7 +200,7 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
   nach 0,3/1/2,5 s; (3) bei Verdeckung die Stile der Mail abschalten (`<style>`, Stylesheets außer chrome:/moz-extension:, Inline-Stile);
   (4) notfalls Banner fest oben am `<html>` anheften. Eingriff erst, wenn das Banner zweimal im Abstand von 800 ms verdeckt ist –
   NovaBird-Conversation blendet seine Ansicht beim Öffnen kurz mit Deckkraft 0 ein. `data-pp-guard` am Banner zeigt einen Eingriff an.
-- Tests: `node tests/e2e/overlay.mjs testext [ordner]` (6 Tricks, mit `EXTRA_ADDONS=testconv` auch mit Conversation; die Testkopie muss im
+- Tests: `node tests/e2e/overlay.mjs work/testext [ordner]` (6 Tricks, mit `EXTRA_ADDONS=work/testconv` auch mit Conversation; die Testkopie muss im
   Projektordner liegen, weil das Snap-Thunderbird `/tmp` nicht sieht). Ergebnis: alle 6 abgewehrt, mit und ohne Conversation, kein
   Fehleingriff im Durchklick-Test mit Conversation (17/17).
 
@@ -209,14 +209,14 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
 - Aufbau: Kopfzeile (⚠, Überschrift, Punktzahl „· Links gesperrt“), darunter die zwei stärksten Gründe, Fußzeile mit „+ N weitere Gründe“
   links und „Warum?“/„Diesem Absender vertrauen“ rechts. „Warum?“ zeigt alle Gründe mit Punkten (`+40`). Rand links 6 px (rot `#C62828`,
   gelb `#B07F00`). Eine Variante mit Knopf-Spalte rechts war höher (Text bricht öfter um) und wurde verworfen.
-- Höhe gemessen: Standardansicht 100 px statt ~175 px, NovaBird-Conversation 111–146 px statt 180–219 px (Durchklick mit `EXTRA_ADDONS=testconv`).
+- Höhe gemessen: Standardansicht 100 px statt ~175 px, NovaBird-Conversation 111–146 px statt 180–219 px (Durchklick mit `EXTRA_ADDONS=work/testconv`).
 - „Mehr ▾“ in Conversation (ein `<details>`-Element): öffnet mit und ohne unser Add-on, Einträge klickbar – in TB 157 kein Fehler nachstellbar.
 
 ## v0.5.3: Englisch
 
 - Einstellungsseite über `source/src/i18n.js` (`opt_*`, `data-i18n`/`data-i18n-html`; HTML nur aus eigenen Texten), Manifest-Beschreibung über
   `source/_locales/{en,de}` (`default_locale: en`).
-- README englisch, `README.de.md` deutsch. Screenshots: `TB_LANG=en tests/e2e/restart.sh && node tests/e2e/screenshots.mjs testext en`
+- README englisch, `README.de.md` deutsch. Screenshots: `TB_LANG=en tests/e2e/restart.sh && node tests/e2e/screenshots.mjs work/testext en`
   → `docs/screenshots/`; ohne `TB_LANG` und mit `de` → `docs/screenshots/de/`. (`restart.sh` setzt für Englisch `LANG` und
   `intl.locale.requested`, weil das Snap-Thunderbird die Sprache aus der Umgebung übernimmt.)
 - `placeholderLinks` kennt jetzt auch „help“, „legal“, „cookie“.
@@ -241,7 +241,19 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
 - `tools/` – Generatoren (z. B. Bankliste aus Wikidata)
 - `docs/` – diese Datei, Screenshots, Release-Texte
 - `build-xpi.sh` – baut `dist/novabird-phishing-<version>.xpi` aus `source/` plus LICENSE, THIRD_PARTY.md, README.md
-- lokal und nicht im Repository: `dist/`, `testext/` (Testkopie), `testprofile/`, `testconv/`, `phishingset/`, `legitset/`, `andere addons/`
+- lokal und nicht im Repository: `dist/` (gebaute XPIs), `testdata/` (`phishingset/`, `legitset/`, `andere addons/` – private Testmails
+  und fremde Add-ons), `work/` (`testext/` Testkopie, `testprofile/`, `testconv/` Conversation-Testkopie – wird von den Tests erzeugt,
+  kann jederzeit gelöscht werden)
+
+## v0.5.5: nur ein Banner pro Mail
+
+- Befund aus dem Alltag: Banner doppelt. Ursache: Seit 0.5.0 neue Add-on-ID – eine ältere Installation mit der alten ID
+  (`phishing-pilot@novabird.invalid`) läuft als eigenes Add-on weiter. Nachgestellt mit zwei Testkopien: 17/17 doppelt.
+- Abwehr in `source/src/content/banner.js`: Markierung `data-pp-claim` am Dokument beim Start (zweite Instanz – andere Kopie
+  oder doppelte Einbindung – hält sich heraus); zieht sich zurück, wenn ein fremdes `#phishing-pilot-banner` (ältere Version ohne
+  Markierung) erscheint. Getestet: zwei neue Kopien und neu + 0.5.1 in beiden Installationsreihenfolgen, jeweils 17/17 genau ein Banner.
+- Durchklick-Test meldet doppelte Banner (`DOPPELT(n)`).
+- Ordner: lokale Daten in `testdata/`, Testerzeugnisse in `work/`.
 
 ## Build und Namen
 

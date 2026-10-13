@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.5.5 – nur ein Banner pro Mail (2026-10-13)
+
+- Behoben: Das Warn-Banner erschien doppelt, wenn zusätzlich eine ältere Version mit der früheren Add-on-ID installiert war (seit 0.5.0 hat das Add-on eine neue ID, die alte Installation wird deshalb nicht ersetzt). Es erscheint jetzt immer genau ein Banner. **Ältere Versionen bitte trotzdem unter „Add-ons und Themes“ entfernen.**
+
 ## 0.5.4 – Phishing-Beispiele anonymisiert speichern (2026-10-13)
 
 - Neu: Rechtsklick auf eine Mail → „Anonymisiert als .eml speichern (Phishing-Beispiel)“. Ersetzt eigene Adressen und Namen (aus den Thunderbird-Konten und abgeleitet aus Adressen wie vorname.nachname@…), alle Empfänger, private Domains, Postanschriften und persönliche Link-Kennungen; leert Anhänge außer Bildern. Danach zeigt ein Fenster, was ersetzt wurde.
