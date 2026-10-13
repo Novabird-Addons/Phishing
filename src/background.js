@@ -16,6 +16,7 @@ import { loadEmbeddedImages } from './images.js';
 import { fetchRemoteImages, remoteScanAllowed } from './remote.js';
 import { imageKey } from './lib/features.js';
 import { t, uiStrings } from './i18n.js';
+import { anonymizeEml } from './lib/anonymize.js';
 
 const lang = () => messenger.i18n.getUILanguage();
 const TAG_KEYS = { suspicious: 'phishpilot_suspicious', dangerous: 'phishpilot_dangerous' };
@@ -405,6 +406,7 @@ async function displayedMessageId(sender) {
 
 async function handleMessage(msg, sender) {
   const config = await getConfig();
+  if (msg.type === 'showDownloads') { await messenger.downloads.showDefaultFolder(); return true; }
   if (msg.type === 'rescanHistory') { await ensureScan({ force: true }); return true; }   // aus den Einstellungen
   // Vom Nutzer im Banner-Dialog bestätigter Link (bei "gefährlich"): im Standardbrowser öffnen. Ein nachgestellter
   // Klick aus dem Skript wäre ein "untrusted" Event, das Thunderbird nicht zuverlässig als Link-Klick behandelt.
@@ -467,6 +469,52 @@ messenger.runtime.onMessage.addListener(async (msg, sender) => {
   }
 });
 
+// ---------- Mails anonymisiert speichern (Rechtsklick in der Nachrichtenliste) ----------
+// Damit Nutzer Phishing-Beispiele weitergeben können: eigene Adressen/Namen, Empfänger, private Domains, Postanschriften
+// und persönliche Link-Kennungen werden ersetzt, Anhänge außer Bildern geleert (lib/anonymize.js).
+const ANON_MENU = 'pp-anonymize';
+const ANON_MAX = 50;
+async function setupMenus() {
+  await messenger.menus.removeAll().catch(() => {});
+  messenger.menus.create({ id: ANON_MENU, title: t(lang(), 'anon_menu'), contexts: ['message_list'] });
+}
+async function ownIdentity() {
+  const addresses = [], names = [];
+  for (const account of await messenger.accounts.list(false)) {
+    for (const id of account.identities ?? []) {
+      if (id.email) addresses.push(id.email.toLowerCase());
+      if (id.name) names.push(id.name);
+    }
+  }
+  return { addresses: [...new Set(addresses)], names: [...new Set(names)] };
+}
+async function saveAnonymized(messages) {
+  const own = await ownIdentity();
+  const total = { addresses: 0, names: 0, domains: 0, postal: 0, links: 0, attachments: 0 };
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
+  let saved = 0, error = null;
+  for (const [i, m] of messages.slice(0, ANON_MAX).entries()) {
+    try {
+      const raw = await messenger.messages.getRaw(m.id, { data_format: 'BinaryString' });
+      const { raw: anon, report } = anonymizeEml(typeof raw === 'string' ? raw : await raw.text(), own);
+      for (const k in total) total[k] += report[k] ?? 0;
+      const url = URL.createObjectURL(new Blob([Uint8Array.from(anon, (c) => c.charCodeAt(0) & 0xff)], { type: 'message/rfc822' }));
+      await messenger.downloads.download({ url, filename: `novabird-anonym/sample-${stamp}-${i + 1}.eml`, saveAs: false, conflictAction: 'uniquify' });
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      saved++;
+    } catch (e) { error = e?.message ?? String(e); console.warn('Anonymisieren fehlgeschlagen', error); }
+  }
+  const q = new URLSearchParams({ n: String(saved), r: JSON.stringify(total), e: error ?? '' });
+  await messenger.windows.create({ url: messenger.runtime.getURL(`anon/report.html?${q}`), type: 'popup', width: 480, height: 330 });
+}
+messenger.menus.onClicked.addListener(async (info) => {
+  if (info.menuItemId !== ANON_MENU) return;
+  let list = info.selectedMessages;
+  const messages = [...(list?.messages ?? [])];
+  while (list?.id && messages.length < ANON_MAX) { list = await messenger.messages.continueList(list.id); messages.push(...list.messages); }
+  await saveAnonymized(messages).catch((e) => console.warn('Anonymisieren', e?.message));
+});
+
 // ---------- Einrichtungsdialog (einmalig): vertrauenswürdige Adressbücher wählen ----------
 const ONBOARDING = { width: 520, height: 480 };
 async function showOnboardingOnce() {
@@ -488,4 +536,5 @@ async function showOnboardingOnce() {
 
 // Beim Start des Hintergrundskripts (auch nach Installation/Update), nur wenn der Index fehlt oder veraltet ist
 ensureScan().catch(console.warn);
+setupMenus().catch((e) => console.warn('Menü', e?.message));
 showOnboardingOnce().catch((e) => console.warn('Einrichtungsdialog', e?.message));
