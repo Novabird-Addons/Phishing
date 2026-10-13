@@ -61,7 +61,7 @@ Better detection needs real examples. Right-click a message → **“Save anonym
 
 ## Installation
 
-1. Download `novabird-phishing-<version>.xpi` from the [releases](https://github.com/Novabird-Addons/Phishing/releases) (or directly from the [`releases/`](releases/) folder).
+1. Download `novabird-phishing-<version>.xpi` from the [releases](https://github.com/Novabird-Addons/Phishing/releases) (under “Assets”).
 2. In Thunderbird: **Tools → Add-ons and Themes → gear icon → Install Add-on From File …**
 3. On first start a short dialog asks **which address books contain your real contacts**. “Collected Addresses” is deliberately unchecked: Thunderbird automatically adds every address you ever wrote to – including a scammer’s.
 

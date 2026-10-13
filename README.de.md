@@ -61,7 +61,7 @@ Bessere Erkennung braucht echte Beispiele. Rechtsklick auf eine Mail → **„An
 
 ## Installation
 
-1. Die Datei `novabird-phishing-<version>.xpi` aus den [Releases](https://github.com/Novabird-Addons/Phishing/releases) herunterladen (oder direkt aus dem Ordner [`releases/`](releases/)).
+1. Die Datei `novabird-phishing-<version>.xpi` aus den [Releases](https://github.com/Novabird-Addons/Phishing/releases) herunterladen (unter „Assets“).
 2. Thunderbird: **Extras → Add-ons und Themes → Zahnrad → Add-on aus Datei installieren …**
 3. Beim ersten Start fragt ein kurzer Dialog, **welche Adressbücher deine echten Kontakte enthalten**. „Gesammelte Adressen“ ist dabei bewusst abgewählt: Dort landet automatisch jede Adresse, an die du einmal geschrieben hast – auch die eines Betrügers.
 
