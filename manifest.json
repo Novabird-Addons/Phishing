@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Novabird-phishing",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "description": "__MSG_extensionDescription__",
   "author": "NovaBird",
   "browser_specific_settings": {
@@ -30,6 +30,8 @@
   "permissions": [
     "accountsRead",
     "addressBooks",
+    "downloads",
+    "menus",
     "messagesModify",
     "messagesRead",
     "messagesTags",

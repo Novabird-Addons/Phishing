@@ -46,6 +46,10 @@ No AI, no cloud. On first start the add-on reads only the **sender, recipients a
 
 Everything stays on your computer. The add-on makes no internet connections – unless you explicitly download another language for text recognition in the settings (it asks first).
 
+## Help improve it: share phishing samples
+
+Better detection needs real examples. Right-click a message → **“Save anonymized as .eml (phishing sample)”**. The add-on replaces your addresses, names, private domains, postal addresses and personal identifiers in links, and empties attachments (images are kept). Everything the detection looks at stays intact. The file lands in your downloads folder (subfolder `novabird-anonym`) and can be shared without revealing who you are. Please take a quick look before sharing – the tool cannot catch everything (e.g. customer numbers in the text).
+
 ## Screenshots
 
 | | |

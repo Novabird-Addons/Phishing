@@ -221,6 +221,19 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
   `intl.locale.requested`, weil das Snap-Thunderbird die Sprache aus der Umgebung übernimmt.)
 - `placeholderLinks` kennt jetzt auch „help“, „legal“, „cookie“.
 
+## v0.5.4: Anonymisiert speichern
+
+- `src/lib/anonymize.js` (rein, getestet in `tests/anonymize.test.js`): MIME-Baum zerlegen, Text-Teile dekodieren (Base64/QP,
+  Zeichensatz), ersetzen, als UTF-8 mit gleicher Transferkodierung zurückschreiben; kodierte Kopfzeilen (RFC 2047) einzeln.
+  Ersetzt: eigene Adressen/Namen (Thunderbird-Identitäten), alle Empfänger (To/Cc/Delivered-To/X-Original-To/…), Namen aus
+  Anzeigenamen und aus Adressen (`vorname.nachname`, Teile ab 4 Zeichen außer Funktionswörtern), eigene Nicht-Freemail-Domains,
+  Postanschriften (Straße + Nr., PLZ + Ort), Werte von Link-Parametern (außer Weiterleitungszielen `http…`), auch in List-Unsubscribe.
+  Anhänge außer Bildern werden geleert (Name/Typ bleiben). Kopfzeile `X-Novabird-Anonymized: 1`.
+- Validierung über legitset+phishingset (114 Mails, eigene Adresse aus To/Delivered-To simuliert): identische Signale vorher/nachher,
+  keine eigene Adresse und kein Namensteil der Adresse mehr im Text (Bilddaten ausgenommen).
+- Background: Menü `message_list`, `messages.getRaw(BinaryString)`, `downloads.download` nach `novabird-anonym/`, Ergebnisfenster `anon/report.html`.
+- E2E: `tests/e2e/anonymize.mjs` (Teil von `npm run e2e`): Kontextmenü per Marionette, Datei im Testprofil-Download-Ordner prüfen.
+
 ## Build und Namen
 
 `./build-xpi.sh` baut `dist/novabird-phishing-<version>.xpi` (ungesigniert) und behält die neueste Version plus die 3 vorherigen.

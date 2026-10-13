@@ -46,6 +46,10 @@ Ohne KI und ohne Cloud. Beim ersten Start liest das Add-on nur **Absender, Empf�
 
 Alles bleibt auf deinem Rechner. Es gibt keine Verbindung ins Internet – außer du lädst in den Einstellungen ausdrücklich eine weitere Sprache für die Texterkennung herunter (mit Rückfrage).
 
+## Mithelfen: Phishing-Beispiele teilen
+
+Bessere Erkennung braucht echte Beispiele. Rechtsklick auf eine Mail → **„Anonymisiert als .eml speichern (Phishing-Beispiel)“**. Das Add-on ersetzt deine Adressen, Namen, privaten Domains, Postanschriften und persönliche Kennungen in Links und leert Anhänge (Bilder bleiben). Alles, was die Erkennung prüft, bleibt erhalten. Die Datei landet im Download-Ordner (Unterordner `novabird-anonym`) und kann weitergegeben werden, ohne dass man erkennt, von wem sie stammt. Bitte vor dem Weitergeben kurz hineinschauen – nicht alles lässt sich automatisch erkennen (z. B. Kundennummern im Text).
+
 ## Bilder
 
 | | |
