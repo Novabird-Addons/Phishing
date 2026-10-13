@@ -8,7 +8,7 @@ rm -f "$OUT"
 python3 - "$OUT" <<'PY'
 import sys, zipfile, os
 out = sys.argv[1]
-items = ['manifest.json', 'LICENSE', 'THIRD_PARTY.md', 'README.md', '_locales', 'src', 'options', 'onboarding']
+items = ['manifest.json', 'LICENSE', 'THIRD_PARTY.md', 'README.md', '_locales', 'src', 'options', 'onboarding', 'anon']
 with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
     for item in items:
         if os.path.isdir(item):

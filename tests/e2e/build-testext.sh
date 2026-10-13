@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 rm -rf testext && mkdir testext
-cp -r manifest.json _locales src options onboarding testext/
+cp -r manifest.json _locales src options onboarding anon testext/
 sed -i "s/mode: 'shadow'/mode: 'active'/" testext/src/lib/config.js
 # Fremdbild-Prüfung an (mit Host-Berechtigung), außer bei 'noremote'
 if [ "${1:-}" != "noremote" ]; then

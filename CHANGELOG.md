@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.5.4 – Phishing-Beispiele anonymisiert speichern (2026-10-13)
+
+- Neu: Rechtsklick auf eine Mail → „Anonymisiert als .eml speichern (Phishing-Beispiel)“. Ersetzt eigene Adressen und Namen (aus den Thunderbird-Konten und abgeleitet aus Adressen wie vorname.nachname@…), alle Empfänger, private Domains, Postanschriften und persönliche Link-Kennungen; leert Anhänge außer Bildern. Danach zeigt ein Fenster, was ersetzt wurde.
+- Geprüft an 114 echten Mails: Die Erkennung findet nach dem Anonymisieren exakt dieselben Signale; die eigene Adresse und der eigene Name kommen nicht mehr vor.
+- Neue Berechtigungen „Menüs“ und „Downloads“ (Thunderbird fragt beim Update einmal nach).
+
 ## 0.5.3 – Englisch (2026-10-13)
 
 - README auf Englisch (deutsche Fassung: `README.de.md`), Screenshots auf Englisch (deutsche unter `docs/screenshots/de/`).
