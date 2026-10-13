@@ -4,7 +4,7 @@ import { Marionette } from './marionette.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const DL = path.resolve('testprofile/dl');   // Snap-Thunderbird sieht /tmp nicht
+const DL = path.resolve('work/testprofile/dl');   // Snap-Thunderbird sieht /tmp nicht
 fs.rmSync(DL, { recursive: true, force: true });
 fs.mkdirSync(DL, { recursive: true });
 const m = new Marionette(); await m.connect();
@@ -24,7 +24,7 @@ await m.script(`const [mail, dl] = arguments;
   let id = acc.defaultIdentity; if (!id) { id = MailServices.accounts.createIdentity(); acc.addIdentity(id); }
   id.email = "j.musterle@familie-musterle.example"; id.fullName = "Jürgen Musterle";
   return 1;`, [Buffer.from(mail, 'utf8').toString('latin1'), DL]);
-await m.send('Addon:Install', { path: path.resolve('testext'), temporary: true });
+await m.send('Addon:Install', { path: path.resolve('work/testext'), temporary: true });
 await sleep(8000);
 await m.script(`for (const w of Services.wm.getEnumerator(null)) if ([...w.document.querySelectorAll("browser")].some((b) => String(b.currentURI?.spec).includes("onboarding.html"))) w.close(); return 1;`);
 const r = await m.script(`
