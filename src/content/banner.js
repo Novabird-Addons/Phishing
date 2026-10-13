@@ -94,35 +94,63 @@
     host.dataset.ocrMs = String(payload.ocrMs ?? 0);
     host.dataset.ocr = (payload.ocrLanguages ?? []).join(',');   // welche OCR-Sprachen liefen (für Tests/Diagnose)
     const root = host.attachShadow({ mode: 'closed' });
+    // Kompakt: eine Kopfzeile (Symbol, Überschrift, Punktzahl, Knöpfe), darunter die zwei wichtigsten Gründe.
+    // "Warum?" klappt alle Gründe mit Punkten je Grund aus. Kräftiger Rand links wie bei den NovaBird-Overlays.
+    const accent = danger ? '#C62828' : '#B07F00';
     const style = document.createElement('style');
     style.textContent = `
       :host { all: initial; display: block; flex: none; }
-      .box { font: 14px/1.4 system-ui, sans-serif; margin: 0 0 12px; padding: 10px 14px;
-             border-radius: 6px; border: 2px solid ${danger ? '#C62828' : '#D9A400'};
-             background: ${danger ? '#FDECEA' : '#FFF8E1'}; color: #222; }
-      h1 { font-size: 15px; margin: 0 0 4px; }
-      ul { margin: 6px 0; padding-left: 20px; }
-      li.more { display: none; opacity: .8; }
-      .open li.more { display: list-item; }
-      button { font: inherit; margin: 4px 8px 0 0; padding: 3px 10px; cursor: pointer; }
-      .small { font-size: 12px; opacity: .8; }`;
+      .box { font: 13px/1.35 system-ui, sans-serif; margin: 0 0 10px; padding: 7px 12px 7px 10px;
+             border-radius: 8px; border: 1px solid ${danger ? '#E7A6A2' : '#E6C766'}; border-left: 6px solid ${accent};
+             background: ${danger ? '#FDECEA' : '#FFF8E1'}; color: #222; box-shadow: 0 2px 8px rgba(20, 40, 80, .10); }
+      .head { display: flex; align-items: baseline; gap: 2px 8px; flex-wrap: wrap; }
+      .icon { color: ${accent}; font-size: 15px; }
+      h1 { font-size: 14px; margin: 0; color: ${danger ? '#8E1B1B' : '#5C4300'}; }
+      .small { font-size: 12px; color: #444; white-space: nowrap; }
+      .foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+      .hint { font-size: 12px; color: #555; cursor: pointer; background: none; border: 0; padding: 0 0 0 16px; text-decoration: underline dotted; }
+      .open .hint { display: none; }
+      .actions { display: flex; gap: 6px; margin-left: auto; }
+      button { font: 12px system-ui, sans-serif; margin: 0; padding: 2px 9px; cursor: pointer; border-radius: 5px;
+               border: 1px solid ${danger ? '#E7A6A2' : '#E6C766'}; background: #fff; color: #222; }
+      button:focus-visible { outline: 2px solid ${accent}; outline-offset: 1px; }
+      ul { margin: 2px 0 0; padding-left: 30px; }
+      li { margin: 1px 0; }
+      li.more, .pts { display: none; }
+      .open li.more { display: list-item; color: #333; }
+      .open .pts { display: inline; margin-left: 6px; font-size: 11px; color: #666; font-variant-numeric: tabular-nums; }`;
     const box = document.createElement('div');
     box.className = 'box';
+    const head = document.createElement('div');
+    head.className = 'head';
+    const icon = Object.assign(document.createElement('span'), { className: 'icon', textContent: '⚠' });
+    icon.setAttribute('aria-hidden', 'true');
     const h = document.createElement('h1');
     h.textContent = payload.kind === 'extortion' ? ui.banner_extortion : danger ? ui.banner_dangerous : ui.banner_suspicious;
+    const small = document.createElement('span');
+    small.className = 'small';
+    small.textContent = ui.banner_score.replace('{0}', score) + (danger ? ' · ' + (ui.banner_links_short ?? ui.banner_links) : '');
+    if (danger) small.title = ui.banner_links;
     const ul = document.createElement('ul');
+    const SHOWN = 2;
     reasons.forEach((r, i) => {
       const li = document.createElement('li');
-      li.textContent = r.text;
-      if (i >= 3) li.className = 'more';
+      li.append(r.text);
+      if (r.weight) li.append(Object.assign(document.createElement('span'), { className: 'pts', textContent: `+${r.weight}` }));
+      if (i >= SHOWN) li.className = 'more';
       ul.append(li);
     });
-    const small = document.createElement('div');
-    small.className = 'small';
-    small.textContent = ui.banner_score.replace('{0}', score) + (danger ? ' · ' + ui.banner_links : '');
     const why = document.createElement('button');
     why.textContent = ui.banner_why;
-    why.addEventListener('click', () => box.classList.toggle('open'));
+    const toggle = () => { box.classList.toggle('open'); why.textContent = box.classList.contains('open') ? (ui.banner_less ?? ui.banner_why) : ui.banner_why; };
+    why.addEventListener('click', toggle);
+    const foot = document.createElement('div');
+    foot.className = 'foot';
+    if (reasons.length > SHOWN) {
+      const hint = Object.assign(document.createElement('button'), { className: 'hint', textContent: (ui.banner_more ?? '+ {0}').replace('{0}', reasons.length - SHOWN) });
+      hint.addEventListener('click', toggle);
+      foot.append(hint);
+    }
     const trust = document.createElement('button');
     trust.textContent = ui.banner_trust;
     trust.addEventListener('click', async () => {
@@ -134,7 +162,12 @@
       state.danger = false;
       state.host?.remove();
     });
-    box.append(h, ul, small, why, trust);
+    const actions = document.createElement('span');
+    actions.className = 'actions';
+    actions.append(why, trust);
+    head.append(icon, h, small);
+    foot.append(actions);
+    box.append(head, ul, foot);
     root.append(style, box);
     state.host = host;
     state.ui = ui;

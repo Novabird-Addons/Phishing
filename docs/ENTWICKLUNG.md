@@ -204,6 +204,14 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
   Projektordner liegen, weil das Snap-Thunderbird `/tmp` nicht sieht). Ergebnis: alle 6 abgewehrt, mit und ohne Conversation, kein
   Fehleingriff im Durchklick-Test mit Conversation (17/17).
 
+## v0.5.2: kompakteres Banner
+
+- Aufbau: Kopfzeile (⚠, Überschrift, Punktzahl „· Links gesperrt“), darunter die zwei stärksten Gründe, Fußzeile mit „+ N weitere Gründe“
+  links und „Warum?“/„Diesem Absender vertrauen“ rechts. „Warum?“ zeigt alle Gründe mit Punkten (`+40`). Rand links 6 px (rot `#C62828`,
+  gelb `#B07F00`). Eine Variante mit Knopf-Spalte rechts war höher (Text bricht öfter um) und wurde verworfen.
+- Höhe gemessen: Standardansicht 100 px statt ~175 px, NovaBird-Conversation 111–146 px statt 180–219 px (Durchklick mit `EXTRA_ADDONS=testconv`).
+- „Mehr ▾“ in Conversation (ein `<details>`-Element): öffnet mit und ohne unser Add-on, Einträge klickbar – in TB 157 kein Fehler nachstellbar.
+
 ## Build und Namen
 
 `./build-xpi.sh` baut `dist/novabird-phishing-<version>.xpi` (ungesigniert) und behält die neueste Version plus die 3 vorherigen.
