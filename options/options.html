@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Novabird-phishing</title>
+<style>
+  body { font: 14px system-ui, sans-serif; max-width: 640px; margin: 16px; }
+  label { display: block; margin: 12px 0 4px; font-weight: 600; }
+  textarea, select { width: 100%; box-sizing: border-box; }
+  small { color: #666; display: block; margin-top: 2px; }
+  .row { margin: 6px 0 2px; }
+  #folders label { font-weight: normal; margin: 2px 0; display: block; }
+  #langs label { font-weight: normal; margin: 2px 0; }
+  #langs button { margin: 0 0 0 8px; padding: 0 6px; }
+  button { margin-top: 12px; margin-right: 8px; }
+</style>
+</head>
+<body>
+<h1>Novabird-phishing</h1>
+<label for="mode">Modus</label>
+<select id="mode">
+  <option value="shadow">Schattenmodus – nur protokollieren (kein Banner, kein Tag)</option>
+  <option value="active">Aktiv – Banner und Tags</option>
+</select>
+<label>Adressbücher für die Kontaktprüfung</label>
+<div id="books"></div>
+<small>Nur Kontakte aus den angehakten Büchern gelten als „bekannt“. „Gesammelte Adressen“ ist standardmäßig aus: Dort landet automatisch jede Adresse, an die du einmal geschrieben hast – auch die eines Betrügers.</small>
+<label><input type="checkbox" id="ocr"> Text in eingebetteten Bildern lesen (OCR, lokal)</label>
+<small>Erkennt z.&nbsp;B. „OneDrive – Dokument anzeigen“ in einem Bild, das auf eine fremde Seite verlinkt.</small>
+<label>OCR-Sprachen (höchstens 3)</label>
+<div id="langs"></div>
+<small>Deutsch und Englisch sind im Add-on enthalten. Jede weitere Sprache verlängert die Bildprüfung um einen Durchlauf.</small>
+<div class="row">
+  <select id="addLang"></select>
+  <button id="addLangBtn" type="button">Herunterladen …</button>
+  <span id="langStatus"></span>
+</div>
+<small>Zusätzliche Sprachen kommen aus dem Projekt <code>tesseract-ocr/tessdata_fast</code> (Apache-2.0) von GitHub.
+Vorher fragt das Add-on nach. Die Dateien werden gegen eine feste Prüfsumme geprüft; aus deinen Mails wird nichts gesendet.</small>
+<label><input type="checkbox" id="scanRemote"> Nachgeladene Fremdbilder ebenfalls prüfen</label>
+<small>Bild-Inhalte kann das Add-on von bereits geladenen Fremdbildern nicht lesen. Diese Option holt dafür
+jedes Bild <b>ein zweites Mal</b> (gleiche Adresse und IP wie beim Anzeigen, ohne Cookies und Referrer). Sie braucht die
+Berechtigung „auf alle Websites zugreifen“, die erst beim Einschalten abgefragt wird. Standard: aus.</small>
+<label for="historyMonths">Absenderhistorie: Rückblick in Monaten (1–18)</label>
+<input type="number" id="historyMonths" min="1" max="18" step="1">
+<small>So weit zurück liest der Erstscan die Kopfdaten (Absender, Empfänger, Datum). Ältere Mails sagen wenig darüber,
+wer heute schreibt. Mails liest der Scan nur bei POP3-Konten und Lokalen Ordnern vollständig; bei IMAP werden keine Mails
+vom Server geholt. Standard: 12.</small>
+<label>Ordner, die nicht zur Absenderhistorie zählen</label>
+<div id="folders"></div>
+<small>Zum Beispiel deine gesammelten Spam- oder Phishing-Mails: Sonst gelten deren Absender irgendwann als „bekannt“.
+Als Spam markierte Mails sowie die Ordner Junk und Papierkorb zählen ohnehin nie. Nach dem Speichern wird die Historie neu aufgebaut.</small>
+<label for="authservIds">Eigene Mailserver (authserv-id, eine pro Zeile)</label>
+<textarea id="authservIds" rows="3"></textarea>
+<small>Nur <code>Authentication-Results</code> dieser Server werden ausgewertet. Leer = jeweils der oberste Header.</small>
+<label for="ownDomains">Eigene / wichtige Domains (eine pro Zeile)</label>
+<textarea id="ownDomains" rows="3"></textarea>
+<small>Ähnliche Domains werden als Nachahmung gemeldet.</small>
+<label for="trusted">Vertraute Absender (eine Adresse pro Zeile)</label>
+<textarea id="trusted" rows="3"></textarea>
+<div>
+  <button id="save">Speichern</button>
+  <button id="export">Schattenprotokoll exportieren</button>
+  <button id="rescan">Absenderhistorie neu aufbauen</button>
+</div>
+<script type="module" src="options.js"></script>
+</body>
+</html>

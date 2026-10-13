@@ -1,0 +1,114 @@
+From - Mon Oct 05 09:00:00 2026
+From: "Anna Beispiel" <anna@example.org>
+To: me@example.net
+Subject: Mittagessen
+Date: Mon, 05 Oct 2026 09:00:00 +0200
+Message-ID: <hist1@example.org>
+Content-Type: text/plain; charset=utf-8
+
+Hallo, kommst du heute mit?
+
+From - Mon Oct 05 10:00:00 2026
+From: "Anna Beispiel" <anna@example.org>
+To: me@example.net
+Subject: Mittagessen
+Date: Mon, 05 Oct 2026 10:00:00 +0200
+Message-ID: <hist2@example.org>
+Content-Type: text/plain; charset=utf-8
+
+Hallo nochmal.
+
+From - Mon Oct 05 11:00:00 2026
+From: "Anna Beispiel" <anna@example.org>
+To: me@example.net
+Subject: Mittagessen
+Date: Mon, 05 Oct 2026 11:00:00 +0200
+Message-ID: <hist3@example.org>
+Content-Type: text/plain; charset=utf-8
+
+Und ein drittes Mal.
+
+From - Tue Oct 06 08:00:00 2026
+From: "DHL Paket" <info@dhl-zustellung-service.com>
+To: me@example.net
+Subject: Ihr Paket
+Date: Tue, 06 Oct 2026 08:00:00 +0200
+Message-ID: <phish1@evil.test>
+Authentication-Results: mx.example.net; spf=fail; dmarc=fail
+Content-Type: text/html; charset=utf-8
+
+<html><body><p>Ihr Paket konnte nicht zugestellt werden. Bitte sofort bestätigen:</p>
+<a href="http://203.0.113.5/login">www.dhl.de/paket</a></body></html>
+
+From - Tue Oct 06 09:00:00 2026
+From: "Chef Mustermann" <chef@gmail.com>
+To: me@example.net
+Subject: AW: Rechnung
+Date: Tue, 06 Oct 2026 09:00:00 +0200
+Message-ID: <fakereply@gmail.com>
+Content-Type: text/plain; charset=utf-8
+
+Bitte kurz zurückrufen.
+
+From - Tue Oct 06 10:00:00 2026
+From: "Anna Beispiel" <anna@example.org>
+To: me@example.net
+Subject: Re: Mittagessen
+Date: Tue, 06 Oct 2026 10:00:00 +0200
+Message-ID: <real-reply@example.org>
+In-Reply-To: <hist1@example.org>
+References: <hist1@example.org>
+Content-Type: text/plain; charset=utf-8
+
+Ja, 12 Uhr.
+
+From - Wed Oct 07 09:00:00 2026
+From: "Rechnungsservice" <info@neu-firma.test>
+To: me@example.net
+Subject: Ihre Rechnung - jetzt per QR-Code bezahlen
+Date: Wed, 07 Oct 2026 09:00:00 +0200
+Message-ID: <qr1@neu-firma.test>
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="BOUND1"
+
+--BOUND1
+Content-Type: text/html; charset=utf-8
+
+<html><body><p>Bitte scannen Sie den Code.</p><img src="cid:qr1" width="246" height="246"></body></html>
+
+--BOUND1
+Content-Type: image/png; name="code.png"
+Content-Transfer-Encoding: base64
+Content-ID: <qr1>
+Content-Disposition: inline; filename="code.png"
+
+iVBORw0KGgoAAAANSUhEUgAAAPYAAAD2CAAAAADAeSUUAAAFoElEQVR4XmP8zzASARPDqLdHTgiM
+xvZISu2jsT0a28M+BEYT+WgiH03kwzMERvP2aN4ezdujeXsYhcBokTZapI0WaaNF2miRNtRDYISW
+5Cy44o2R6AhFHmmH6MI19o5LFlMc2XZM08hzG7KHRuvt0Xp7tN4erbeHUQiw4PcL/vlQ5BIVk41Z
+wiPbhb+shujFbybxbsP042hJPlqSj5bkoyX5yCnJIT7FbAOTt+IFuXxGZuNqY2OW55ghT57bRkvy
+0ZJ8tCQfLclHWklOvH9xjYQgi+NiI4+xQNiYItQK+dGSfLQkHy3JR0vy0ZIcMwRwtbfxiyO3+XG1
+8/GPvZMXF6Ml+WhJPlqSj5bkI60kp2QsBRJW+MtzZPMx2+H4bSfPbaMl+WhJPlqSj5bkI6ckZyTa
+q7hKYGJa1OSpYaQgGkZL8tGSfLQkHy3JR0JJTl5bl/iRbWJGznGF83+KI2C0JB8tyUdL8tGSfBiF
+ACMlo9O4ym3M0RLMEMMcb8EVquTZgr+0Hy3JR0vy0ZJ8tCQfCSU5sh+JH/1A1oWrrMZlGv7REvw1
+Dqa9+ONotCQfLclHS/LRknwYhQCBnUH428P4S3jyxtghYYusF1cLH3N8hngbR0vy0ZJ8tCQfLclH
+TkmO7FPMVjH+EQzkNjly+YzLHMzSG3/JjCyLyR4dXcGSSkcrsNEKbLQCG54hQMI4Oa5yFbPExiz/
+iSml8ZsDMRNTDa4SG39/YbRIGy3SRou04RkCIzRvkzC6gqt9jlxmklra/yc6MeEvw4lxA7JVoyX5
+aEk+WpKPluTDKASIujOImFFr/G1m/CYgl9LElNi46hSIOP7WOETNaEk+WpKPluSjJfkwCgEW4v2C
+Wd5iimCWsbjGVSB6cY2oILfVMUtmZF2YvQD8rhotyRlGHBitt0fr7WEfAkSV5JS3mSHlLa4xEFzl
+OSOJwU/8WM1o3h7N26Nt8tE2+TAKAQKjK/jLXkg4YKrBX6ISUz7japMTM84z2ibHmT5HK7DRCmy0
+AhueIUDUTROYZTVmiYosQkzZjlna46o1cAU85qgL8VE0WqSNFmmjRdpom3wYhQDJM54Qv+MvhyFq
+MEta/GU1rpY8rnY4si3IMULMGMtoST5ako+W5KMl+UgoyXGVw8glOf6xDswREsxwwz+KQnx9QYyr
+kG0fLclHS/LRkny0JB9GIcBCnl+IaV0z4jAaeRwb/ygNxABixsaRVY62yXHG6WgFNlqBjVZgwzME
+iNrjib99jhkwuNrSuFQS0/7HFfy46hT85flokTZapI0WaaNt8pHcJsffisY/ooKrdMUUJ6YugKhB
+buFD4gVZBJeNoyX5aEk+WpKPluTDKAQItMkxy0biRZBDCbO8RTYHwiZ1ZhMzFv4THTGjJfloST5a
+ko+W5COhJCfVj7ja6vhb18SU8MjlPC7TMNvhmCM2yD4aLclHS/LRkny0JB9GIYBzxpORaE/iGuVA
+NgB/uQpRiVwa4xr9xl+qEyMLUTNako+W5KMl+WhJPoxCgKidQbj8i7+0J3VUHH/pjewG4tv5uNww
+WpKPluSjJfloST5ySnLkVi7+shQii2u0BH+I4SrDMcWJrzvwj5mPluSjJfloST5ako+0kpx4/1Iy
+Wo6rLsAsvXHVF5gl/2ibHCXuRiuw0QpstAIbniHAQgtv4Zp/RC6rMe1FLofxj59g6sUcY8fvr9Ei
+bbRIGy3ShmcIjNC8TcKptqTGO2Z5DjEBV7sdWRaz1Y1/tATTzNGSHEsIjFZgoxXYaAU2PEOAqNvf
+iPE65hgI5noVXCIQ88krq3G1/0fHyUdLclgIjFZgoxXYsA8Bos5CHH6hMJq3R/P2aON0eIbAaN4e
+zdujeXs0bw+jEBgt0kaLtNEibbRIGy3ShnoIjJbkoyX5aEk+WpKPluSjJfmQDIERWoEBAF4tAQpX
+IHUwAAAAAElFTkSuQmCC
+
+--BOUND1--
+
