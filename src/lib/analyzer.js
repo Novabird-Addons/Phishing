@@ -141,7 +141,7 @@ function shortBrandIn(raw, name) {
   return shortBrandRe.get(name).test(raw);
 }
 // Pflicht-Links, die ins Leere führen (href="#"): typisch für Phishing-Baukästen, die nur den Köder-Link befüllen
-const LEGAL_LINK = /impressum|datenschutz|imprint|privacy|agb|nutzungsbedingungen|terms|hilfe|faq|kontakt|contact|abmelden|abbestellen|unsubscribe/i;
+const LEGAL_LINK = /impressum|datenschutz|imprint|privacy|agb|nutzungsbedingungen|terms|hilfe|\bhelp\b|faq|kontakt|contact|legal|cookie|abmelden|abbestellen|unsubscribe/i;
 const DEAD_HREF = /^\s*(#.*)?$|^\s*javascript:/i;
 
 function maxLevel(a, b) { return LEVELS.indexOf(a) >= LEVELS.indexOf(b) ? a : b; }

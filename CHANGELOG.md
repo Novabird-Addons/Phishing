@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.5.3 – Englisch (2026-10-13)
+
+- README auf Englisch (deutsche Fassung: `README.de.md`), Screenshots auf Englisch (deutsche unter `docs/screenshots/de/`).
+- Einstellungsseite und Add-on-Beschreibung jetzt zweisprachig (Deutsch/Englisch, je nach Sprache von Thunderbird). Banner, Gründe, Tags und Einrichtungsdialog waren es schon.
+- Einstellungen zeigen nach dem Speichern „Gespeichert.“.
+- Tote Pflicht-Links werden auch mit englischen Bezeichnungen erkannt („Help“, „Legal notice“, „Cookies“).
+
 ## 0.5.2 – kompakteres Banner (2026-10-13)
 
 - Das Warn-Banner ist rund 40 % niedriger (z. B. 100 statt 175 Pixel; in NovaBird-Conversation 111–146 statt 180–219 Pixel), ohne Informationen wegzulassen: Überschrift und Punktzahl in einer Zeile, die zwei wichtigsten Gründe immer sichtbar, Knöpfe in der Fußzeile.

@@ -212,6 +212,15 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
 - Höhe gemessen: Standardansicht 100 px statt ~175 px, NovaBird-Conversation 111–146 px statt 180–219 px (Durchklick mit `EXTRA_ADDONS=testconv`).
 - „Mehr ▾“ in Conversation (ein `<details>`-Element): öffnet mit und ohne unser Add-on, Einträge klickbar – in TB 157 kein Fehler nachstellbar.
 
+## v0.5.3: Englisch
+
+- Einstellungsseite über `src/i18n.js` (`opt_*`, `data-i18n`/`data-i18n-html`; HTML nur aus eigenen Texten), Manifest-Beschreibung über
+  `_locales/{en,de}` (`default_locale: en`).
+- README englisch, `README.de.md` deutsch. Screenshots: `TB_LANG=en tests/e2e/restart.sh && node tests/e2e/screenshots.mjs testext en`
+  → `docs/screenshots/`; ohne `TB_LANG` und mit `de` → `docs/screenshots/de/`. (`restart.sh` setzt für Englisch `LANG` und
+  `intl.locale.requested`, weil das Snap-Thunderbird die Sprache aus der Umgebung übernimmt.)
+- `placeholderLinks` kennt jetzt auch „help“, „legal“, „cookie“.
+
 ## Build und Namen
 
 `./build-xpi.sh` baut `dist/novabird-phishing-<version>.xpi` (ungesigniert) und behält die neueste Version plus die 3 vorherigen.
