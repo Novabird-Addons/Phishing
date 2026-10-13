@@ -13,7 +13,7 @@ Jedes dieser beiden Signale **allein** setzt die Stufe „verdächtig“:
   (Gleiche Firmendomain, kein Freemailer: kein Alarm.)
 - **Antwort ohne Bezug:** „Re:/AW:“ ohne `In-Reply-To`/`References`, oder der Bezug liegt in keinem lokalen Ordner.
 
-Weitere Signale (Gewichte in `src/lib/config.js`): DMARC/SPF/DKIM (nur Header des eigenen Servers),
+Weitere Signale (Gewichte in `source/src/lib/config.js`): DMARC/SPF/DKIM (nur Header des eigenen Servers),
 Markenname vs. Domain, Lookalike-/Homoglyphen-Domains, Link-Text ≠ Ziel, IP-/Shortener-/Redirect-Links,
 Passwortfelder, riskante Anhänge, QR-Codes und Texte in Bildern (lokal dekodiert bzw. per OCR gelesen), Reply-To-Fremddomain, Erstkontakt, Druckwörter. Schwache Signale warnen nie allein.
 
@@ -30,13 +30,13 @@ npm test          # Unit-Tests (Node, schnell)
 npm run e2e       # Headless-Thunderbird per Marionette (Snap-Thunderbird, Port 2828)
 ```
 
-Aufbau: `src/lib/` reine Logik (getestet), `src/background.js` Thunderbird-Anbindung,
-`src/content/banner.js` Banner, `tests/e2e/` Marionette-Client + Testprofil.
+Aufbau: `source/src/lib/` reine Logik (getestet), `source/src/background.js` Thunderbird-Anbindung,
+`source/src/content/banner.js` Banner, `tests/e2e/` Marionette-Client + Testprofil.
 
 ## Wer gilt als „bekannter“ Absender? (ab v0.2.9)
 
 Nicht schon, wer mehrfach im Postfach vorkommt – sonst würde hartnäckiger Spam mit der Zeit legitimiert. Zwei Stufen
-(`src/lib/history.js`):
+(`source/src/lib/history.js`):
 
 | Stufe | Bedingung | Wirkung |
 |---|---|---|
@@ -74,7 +74,7 @@ Ergebnis ist also nie niedriger als das des gefährlicheren Durchlaufs. Messung 
 
 ## Inhalt: Erpressung und Füllwörter
 
-`src/lib/scam.js` erkennt Erpressungs-Mails („Sextortion“) am Inhalt (DE/EN): Behauptung gehackter Geräte/Kamera, Drohung mit
+`source/src/lib/scam.js` erkennt Erpressungs-Mails („Sextortion“) am Inhalt (DE/EN): Behauptung gehackter Geräte/Kamera, Drohung mit
 Veröffentlichung, Kryptowährung und Wallet-Adresse, Frist, „nicht antworten/Polizei“. Wallet + Hacking-/Drohbehauptung oder
 mehrere Merkmale zusammen ergeben „gefährlich“ (erzwungen, auch von bekannten Absendern); Newsletter nur beim Volltreffer.
 Ein Füllwort, das ≥ 25 % der Wörter ausmacht (Trick gegen Spamfilter), wird gemeldet und vor der Textanalyse entfernt.
@@ -91,7 +91,7 @@ Bild (mindestens zwei Begriffe plus Dringlichkeit, z. B. Bitcoin + investieren +
 
 Die Konversationsansicht ersetzt den Inhalt des Nachrichtendokuments (`document.body.replaceChildren()`) und baut
 `#nbc-root` auf, auch nachträglich. Das Banner hängt sich deshalb als erstes Element in `#nbc-root` (sonst in den `<body>`)
-und wird per `MutationObserver` wieder angehängt, wenn der Inhalt ersetzt wird (`src/content/banner.js`).
+und wird per `MutationObserver` wieder angehängt, wenn der Inhalt ersetzt wird (`source/src/content/banner.js`).
 Test: `EXTRA_ADDONS=<conversation-ordner> node tests/e2e/clickthrough.mjs testext phishingset 600`
 (Conversation rendert einzelne Mails nur mit `alwaysRender: true`).
 
@@ -101,7 +101,7 @@ Test: `EXTRA_ADDONS=<conversation-ordner> node tests/e2e/clickthrough.mjs testex
 - **Fremdbilder** (aus dem Netz) werden nie automatisch geladen. Optional (Einstellungen, standardmäßig aus) prüft das Add-on
   Bilder, die *du* nachgeladen hast, durch einen zweiten Abruf (ohne Cookies/Referrer) und braucht dafür die
   Berechtigung „alle Websites“. Weil das Verbindungen nach außen erlaubt, ist die Content-Security-Policy gelockert;
-  `tests/no-network.test.js` begrenzt jeden Netzzugriff im Code auf `src/remote.js`.
+  `tests/no-network.test.js` begrenzt jeden Netzzugriff im Code auf `source/src/remote.js`.
 - Ohne die Option sieht das Add-on bei Fremdbildern nur die Struktur (großes Bild als Link auf Fremddomain).
 - Zwei-Ebenen-Domains (`co.uk` …) über eine kleine eigene Liste statt Public Suffix List.
 - Absenderhistorie wird einmalig aus allen Ordnern aufgebaut und mit neuer Post fortgeschrieben.
@@ -163,7 +163,7 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
 
 ## v0.2.12: Banken aus Wikidata, Paketdienste und Shops
 
-- `src/data/banks-wikidata.js`: 1250 aktive Banken in den 27 EU-Ländern mit offizieller Website aus Wikidata (CC0), davon 686 in
+- `source/src/data/banks-wikidata.js`: 1250 aktive Banken in den 27 EU-Ländern mit offizieller Website aus Wikidata (CC0), davon 686 in
   Deutschland (386 Sparkassen) und 80 in Österreich. Neu erzeugen: `node tools/fetch-wikidata-banks.mjs [de at …]` (holt Land für Land;
   nur beim Entwickeln, das Add-on stellt keine Verbindung her).
 - **Hauptnutzen: weniger Fehlalarme.** Vorher hätte das Add-on echte Banken von ihrer eigenen Domain gewarnt (Messung über die
@@ -181,7 +181,7 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
 
 - Add-on-ID `phishing-addon@novabird` (vorher Platzhalter `phishing-pilot@novabird.invalid` – eine Installation mit der alten ID ist ein anderes Add-on und sollte entfernt werden), Autor „NovaBird“, Repository https://github.com/Novabird-Addons/Phishing.
 - Standardmodus **aktiv** (vorher Schattenmodus).
-- **Einrichtungsdialog** (`onboarding/`) beim ersten Start (`onboardingDone` in storage.local): eigenes Popup-Fenster mittig über dem
+- **Einrichtungsdialog** (`source/onboarding/`) beim ersten Start (`onboardingDone` in storage.local): eigenes Popup-Fenster mittig über dem
   Hauptfenster, Stil wie die Overlays von novabird-send (Palette `#e6ecf5`/`#2f6bd8`, dunkel `#1d1e22`/`#5b9dff`). Bewusst kein
   Experiment-API-Overlay im Hauptfenster: das Add-on bleibt ohne privilegierten Code. In NovaBird kann später das gemeinsame Overlay genutzt werden.
 - Adressbücher: `contactBookIds: null` heißt jetzt „alle außer Gesammelte Adressen“ (`lib/contacts.js`, erkannt am übersetzten Namen);
@@ -195,7 +195,7 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
 - Befund (`tests/e2e/overlay.mjs`): Mail-CSS konnte das Banner verdecken – `position:fixed`/`absolute` mit höchstem z-index, negative
   Ränder, `transform`, `<style>` mit `#phishing-pilot-banner{display:none!important}` und `body::before`-Fläche. 5 von 6 Tricks wirkten.
   Thunderbirds eigener Tag im Mailkopf und die Link-Sperre blieben unberührt.
-- Abwehr in `src/content/banner.js`: (1) Sichtbarkeit/Ebene als Inline-Stil mit `!important` (schlägt jede Mail-Regel);
+- Abwehr in `source/src/content/banner.js`: (1) Sichtbarkeit/Ebene als Inline-Stil mit `!important` (schlägt jede Mail-Regel);
   (2) Kontrolle per `elementFromPoint` an drei Punkten plus Deckkraft/Sichtbarkeit/Filter/clip-path aller Vorfahren, nach dem Zeichnen und
   nach 0,3/1/2,5 s; (3) bei Verdeckung die Stile der Mail abschalten (`<style>`, Stylesheets außer chrome:/moz-extension:, Inline-Stile);
   (4) notfalls Banner fest oben am `<html>` anheften. Eingriff erst, wenn das Banner zweimal im Abstand von 800 ms verdeckt ist –
@@ -214,8 +214,8 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
 
 ## v0.5.3: Englisch
 
-- Einstellungsseite über `src/i18n.js` (`opt_*`, `data-i18n`/`data-i18n-html`; HTML nur aus eigenen Texten), Manifest-Beschreibung über
-  `_locales/{en,de}` (`default_locale: en`).
+- Einstellungsseite über `source/src/i18n.js` (`opt_*`, `data-i18n`/`data-i18n-html`; HTML nur aus eigenen Texten), Manifest-Beschreibung über
+  `source/_locales/{en,de}` (`default_locale: en`).
 - README englisch, `README.de.md` deutsch. Screenshots: `TB_LANG=en tests/e2e/restart.sh && node tests/e2e/screenshots.mjs testext en`
   → `docs/screenshots/`; ohne `TB_LANG` und mit `de` → `docs/screenshots/de/`. (`restart.sh` setzt für Englisch `LANG` und
   `intl.locale.requested`, weil das Snap-Thunderbird die Sprache aus der Umgebung übernimmt.)
@@ -223,7 +223,7 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
 
 ## v0.5.4: Anonymisiert speichern
 
-- `src/lib/anonymize.js` (rein, getestet in `tests/anonymize.test.js`): MIME-Baum zerlegen, Text-Teile dekodieren (Base64/QP,
+- `source/src/lib/anonymize.js` (rein, getestet in `tests/anonymize.test.js`): MIME-Baum zerlegen, Text-Teile dekodieren (Base64/QP,
   Zeichensatz), ersetzen, als UTF-8 mit gleicher Transferkodierung zurückschreiben; kodierte Kopfzeilen (RFC 2047) einzeln.
   Ersetzt: eigene Adressen/Namen (Thunderbird-Identitäten), alle Empfänger (To/Cc/Delivered-To/X-Original-To/…), Namen aus
   Anzeigenamen und aus Adressen (`vorname.nachname`, Teile ab 4 Zeichen außer Funktionswörtern), eigene Nicht-Freemail-Domains,
@@ -231,8 +231,17 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
   Anhänge außer Bildern werden geleert (Name/Typ bleiben). Kopfzeile `X-Novabird-Anonymized: 1`.
 - Validierung über legitset+phishingset (114 Mails, eigene Adresse aus To/Delivered-To simuliert): identische Signale vorher/nachher,
   keine eigene Adresse und kein Namensteil der Adresse mehr im Text (Bilddaten ausgenommen).
-- Background: Menü `message_list`, `messages.getRaw(BinaryString)`, `downloads.download` nach `novabird-anonym/`, Ergebnisfenster `anon/report.html`.
+- Background: Menü `message_list`, `messages.getRaw(BinaryString)`, `downloads.download` nach `novabird-anonym/`, Ergebnisfenster `source/anon/report.html`.
 - E2E: `tests/e2e/anonymize.mjs` (Teil von `npm run e2e`): Kontextmenü per Marionette, Datei im Testprofil-Download-Ordner prüfen.
+
+## Ordneraufbau (ab v0.5.4)
+
+- `source/` – das Add-on selbst (kommt ins XPI): `manifest.json`, `_locales/`, `src/`, `options/`, `onboarding/`, `anon/`
+- `tests/` – Unit-Tests (`npm test`), E2E-Tests mit headless Thunderbird (`tests/e2e/`), Offline-Werkzeug `tests/tools/eml-run.mjs`
+- `tools/` – Generatoren (z. B. Bankliste aus Wikidata)
+- `docs/` – diese Datei, Screenshots, Release-Texte
+- `build-xpi.sh` – baut `dist/novabird-phishing-<version>.xpi` aus `source/` plus LICENSE, THIRD_PARTY.md, README.md
+- lokal und nicht im Repository: `dist/`, `testext/` (Testkopie), `testprofile/`, `testconv/`, `phishingset/`, `legitset/`, `andere addons/`
 
 ## Build und Namen
 

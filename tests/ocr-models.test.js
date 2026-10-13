@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { gitBlobSha1, verifyModel } from '../src/lib/modelcheck.js';
-import { OCR_MODELS, TESSDATA_BASE, TESSDATA_COMMIT } from '../src/data/ocr-languages.js';
-import { downloadBytes } from '../src/remote.js';
+import { gitBlobSha1, verifyModel } from '../source/src/lib/modelcheck.js';
+import { OCR_MODELS, TESSDATA_BASE, TESSDATA_COMMIT } from '../source/src/data/ocr-languages.js';
+import { downloadBytes } from '../source/src/remote.js';
 
 test('Git-Blob-Prüfsumme entspricht "git hash-object"', async () => {
   assert.equal(await gitBlobSha1(new TextEncoder().encode('hello world\n')), '3b18e512dba79e4c8300dd08aeb37f8e728b8dad');

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Baut eine Testkopie des Add-ons im Modus "active" (Standard ist "shadow").
+# Baut eine Testkopie des Add-ons (aus source/) mit Fremdbild-Prüfung; Modus ist ohnehin "active".
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 rm -rf testext && mkdir testext
-cp -r manifest.json _locales src options onboarding anon testext/
+cp -r source/. testext/
 sed -i "s/mode: 'shadow'/mode: 'active'/" testext/src/lib/config.js
 # Fremdbild-Prüfung an (mit Host-Berechtigung), außer bei 'noremote'
 if [ "${1:-}" != "noremote" ]; then

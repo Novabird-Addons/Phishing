@@ -10,16 +10,16 @@ Prüfsummen liegen im jeweiligen Ordner (`README.md`, `LICENSE-*`, `SHA256SUMS`)
 
 | Bibliothek | Version | Lizenz | Pfad |
 |---|---|---|---|
-| zxing-wasm (Reader-Build, QR-Dekodierung) | 3.1.5 | MIT (Wrapper) | `src/vendor/zxing-wasm/` |
-| zxing-cpp (Engine in der WASM-Datei) | Commit `2ecec3f` | Apache-2.0, keine NOTICE-Datei | `src/vendor/zxing-wasm/` |
-| tesseract-wasm (OCR-Client, Worker, WASM) | 0.11.0 | BSD-2-Clause | `src/vendor/tesseract-wasm/` |
-| Tesseract (Engine in der WASM-Datei) | 5.3.0 | Apache-2.0 | `src/vendor/tesseract-wasm/` |
-| Leptonica (in der WASM-Datei) | 1.83.1 | Leptonica-Lizenz (BSD-artig) | `src/vendor/tesseract-wasm/` |
-| Comlink (in den OCR-Skripten eingebettet) | 4.x | Apache-2.0 | `src/vendor/tesseract-wasm/` |
-| `deu.traineddata` (tessdata_fast) | – | Apache-2.0 | `src/vendor/tesseract-wasm/` |
+| zxing-wasm (Reader-Build, QR-Dekodierung) | 3.1.5 | MIT (Wrapper) | `source/src/vendor/zxing-wasm/` |
+| zxing-cpp (Engine in der WASM-Datei) | Commit `2ecec3f` | Apache-2.0, keine NOTICE-Datei | `source/src/vendor/zxing-wasm/` |
+| tesseract-wasm (OCR-Client, Worker, WASM) | 0.11.0 | BSD-2-Clause | `source/src/vendor/tesseract-wasm/` |
+| Tesseract (Engine in der WASM-Datei) | 5.3.0 | Apache-2.0 | `source/src/vendor/tesseract-wasm/` |
+| Leptonica (in der WASM-Datei) | 1.83.1 | Leptonica-Lizenz (BSD-artig) | `source/src/vendor/tesseract-wasm/` |
+| Comlink (in den OCR-Skripten eingebettet) | 4.x | Apache-2.0 | `source/src/vendor/tesseract-wasm/` |
+| `deu.traineddata` (tessdata_fast) | – | Apache-2.0 | `source/src/vendor/tesseract-wasm/` |
 
 Zusätzliche OCR-Sprachmodelle (`tessdata_fast`, Apache-2.0) werden **nur auf Wunsch des Nutzers** zur Laufzeit von
-`raw.githubusercontent.com` geladen (fester Commit, Prüfsumme in `src/data/ocr-languages.js`) und lokal gespeichert;
+`raw.githubusercontent.com` geladen (fester Commit, Prüfsumme in `source/src/data/ocr-languages.js`) und lokal gespeichert;
 sie sind nicht Teil des Pakets.
 
 Beide WASM-Builds sind mit Emscripten erzeugt; dessen Laufzeitteile stehen unter MIT/UIUC bzw.
@@ -36,11 +36,11 @@ Alle Heuristiken sind eigene Implementierungen.
 
 | Datei | Herkunft | Lizenz |
 |---|---|---|
-| `src/data/brands.js` | selbst erstellt (öffentlich bekannte Marken-Domains) | wie das Projekt (MIT) |
-| `src/data/banks-wikidata.js` | [Wikidata](https://www.wikidata.org) (Banken in EU-Ländern mit offizieller Website), erzeugt mit `tools/fetch-wikidata-banks.mjs` | CC0 1.0 (gemeinfrei; Quellenangabe freiwillig) |
-| `src/data/banks-wikidata.js` | [Wikidata](https://www.wikidata.org) (Banken in EU-Ländern mit offizieller Website), erzeugt mit `tools/fetch-wikidata-banks.mjs` | CC0 1.0 (gemeinfrei; Quellenangabe freiwillig) |
-| Homoglyph-Tabelle in `src/lib/text.js` | selbst erstellt | wie das Projekt (MIT) |
-| Punycode-Dekodierung in `src/lib/domains.js` | eigene Umsetzung von RFC 3492 | wie das Projekt (MIT) |
+| `source/src/data/brands.js` | selbst erstellt (öffentlich bekannte Marken-Domains) | wie das Projekt (MIT) |
+| `source/src/data/banks-wikidata.js` | [Wikidata](https://www.wikidata.org) (Banken in EU-Ländern mit offizieller Website), erzeugt mit `tools/fetch-wikidata-banks.mjs` | CC0 1.0 (gemeinfrei; Quellenangabe freiwillig) |
+| `source/src/data/banks-wikidata.js` | [Wikidata](https://www.wikidata.org) (Banken in EU-Ländern mit offizieller Website), erzeugt mit `tools/fetch-wikidata-banks.mjs` | CC0 1.0 (gemeinfrei; Quellenangabe freiwillig) |
+| Homoglyph-Tabelle in `source/src/lib/text.js` | selbst erstellt | wie das Projekt (MIT) |
+| Punycode-Dekodierung in `source/src/lib/domains.js` | eigene Umsetzung von RFC 3492 | wie das Projekt (MIT) |
 
 ## Bewusst nicht verwendet
 
