@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildFeatures } from '../src/lib/features.js';
-import { analyze, headerSuspicion, nameMatchesDomain, orgKey } from '../src/lib/analyzer.js';
-import { lookalike, registrableDomain, toUnicodeHost, hasMixedScript, looksRandomDomain } from '../src/lib/domains.js';
-import { nameKey } from '../src/lib/text.js';
-import { parseAddressList, parseAuthResults } from '../src/lib/headers.js';
-import { contactInfo, parseVCard } from '../src/lib/contacts.js';
-import { t, uiStrings } from '../src/i18n.js';
-import { flagRecord, historyMonths, isEstablished, noteRecord, trustLevel } from '../src/lib/history.js';
+import { buildFeatures } from '../source/src/lib/features.js';
+import { analyze, headerSuspicion, nameMatchesDomain, orgKey } from '../source/src/lib/analyzer.js';
+import { lookalike, registrableDomain, toUnicodeHost, hasMixedScript, looksRandomDomain } from '../source/src/lib/domains.js';
+import { nameKey } from '../source/src/lib/text.js';
+import { parseAddressList, parseAuthResults } from '../source/src/lib/headers.js';
+import { contactInfo, parseVCard } from '../source/src/lib/contacts.js';
+import { t, uiStrings } from '../source/src/i18n.js';
+import { flagRecord, historyMonths, isEstablished, noteRecord, trustLevel } from '../source/src/lib/history.js';
 
 const html = (body) => ({ contentType: 'text/html', body });
 const mk = (headers, parts = [html('<p>Hallo</p>')], cfg) => buildFeatures({ headers, parts }, cfg);
@@ -525,7 +525,7 @@ test('Schicht 1: aus dem Postfach gelernte Absendernamen', () => {
 });
 
 test('Schicht 2: Banken aus Wikidata – keine Fehlalarme für echte Banken, Fälschungen höchstens verdächtig', async () => {
-  const { default: BANKS } = await import('../src/data/banks-wikidata.js');
+  const { default: BANKS } = await import('../source/src/data/banks-wikidata.js');
   assert.ok(BANKS.length > 1000, 'Liste vorhanden');
   // keine echte Bank löst von ihrer eigenen Domain ein Absender-Signal aus
   let fp = 0;
@@ -558,7 +558,7 @@ test('"Oft empfangen" nimmt nur den Erstkontakt-Hinweis weg; Erstscan markiert O
 });
 
 test('Adressbücher: "Gesammelte Adressen" zählt standardmäßig nicht, gespeicherte Auswahl gilt genau', async () => {
-  const { isCollectedBook, trustedBookIds } = await import('../src/lib/contacts.js');
+  const { isCollectedBook, trustedBookIds } = await import('../source/src/lib/contacts.js');
   const books = [{ id: 'a', name: 'Persönliches Adressbuch' }, { id: 'b', name: 'Gesammelte Adressen' }, { id: 'c', name: 'Firma (CardDAV)' }, { id: 'd', name: 'Collected Addresses' }];
   assert.ok(isCollectedBook(books[1]) && isCollectedBook(books[3]) && !isCollectedBook(books[0]));
   assert.deepEqual(trustedBookIds(books, null), ['a', 'c']);

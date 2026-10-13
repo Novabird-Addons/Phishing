@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { anonymizeEml, _qpEncode, _qpDecode } from '../src/lib/anonymize.js';
+import { anonymizeEml, _qpEncode, _qpDecode } from '../source/src/lib/anonymize.js';
 
 const utf8 = (s) => Buffer.from(s, 'utf8').toString('latin1');
 const b64 = (s) => Buffer.from(s, 'utf8').toString('base64');
