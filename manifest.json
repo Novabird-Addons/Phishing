@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "Novabird-phishing",
+  "version": "0.5.0",
+  "description": "Lokaler, offline arbeitender Phishing-Schutz mit Absender-, Kontakt- und Thread-Prüfung.",
+  "author": "NovaBird",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "phishing-addon@novabird",
+      "strict_min_version": "153.0"
+    }
+  },
+  "background": {
+    "scripts": [
+      "src/background.js"
+    ],
+    "type": "module"
+  },
+  "message_display_scripts": [
+    {
+      "js": [
+        "src/content/banner.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "options_ui": {
+    "page": "options/options.html"
+  },
+  "permissions": [
+    "accountsRead",
+    "addressBooks",
+    "messagesModify",
+    "messagesRead",
+    "messagesTags",
+    "messagesTagsList",
+    "messagesUpdate",
+    "storage"
+  ],
+  "optional_permissions": [
+    "messagesMove"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' http: https:"
+  },
+  "optional_host_permissions": [
+    "<all_urls>"
+  ],
+  "homepage_url": "https://github.com/Novabird-Addons/Phishing"
+}
