@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.5.2 – kompakteres Banner (2026-10-13)
+
+- Das Warn-Banner ist rund 40 % niedriger (z. B. 100 statt 175 Pixel; in NovaBird-Conversation 111–146 statt 180–219 Pixel), ohne Informationen wegzulassen: Überschrift und Punktzahl in einer Zeile, die zwei wichtigsten Gründe immer sichtbar, Knöpfe in der Fußzeile.
+- **„Warum?“** zeigt alle Gründe mit den **Punkten je Grund**.
+- Kräftiger farbiger Rand links (rot bzw. dunkelgelb) für gute Sichtbarkeit.
+- Geprüft: Der „Mehr ▾“-Knopf von NovaBird-Conversation funktioniert mit dem Banner (in Thunderbird 157 nicht nachstellbar).
+
 ## 0.5.1 – Banner lässt sich nicht mehr verdecken (2026-10-13)
 
 - **Sicherheitskorrektur:** Eine Phishing-Mail konnte das Warn-Banner mit eigenem CSS überdecken oder ausblenden (z. B. eine weiße Fläche mit „Alles in Ordnung“). Getestet mit 6 Tricks, vorher wirkten 5 davon. Jetzt bleibt das Banner immer sichtbar: Es setzt seine Sichtbarkeit unverrückbar, prüft nach dem Einblenden, ob es wirklich oben liegt, und schaltet sonst die Stile dieser Mail ab.
