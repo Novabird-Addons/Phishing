@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const root = new URL('../src/', import.meta.url).pathname;
+const root = new URL('../source/src/', import.meta.url).pathname;
 function* walk(dir) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
@@ -13,7 +13,7 @@ function* walk(dir) {
   }
 }
 
-test('Netzwerk-Aufrufe nur in src/remote.js; sonst nur lokale Erweiterungs-URLs', () => {
+test('Netzwerk-Aufrufe nur in source/src/remote.js; sonst nur lokale Erweiterungs-URLs', () => {
   for (const file of walk(root)) {
     const rel = path.relative(root, file);
     const src = fs.readFileSync(file, 'utf8');

@@ -2,7 +2,7 @@
 // Nur zum Erzeugen der Datei beim Entwickeln – das Add-on selbst stellt keine Verbindung her.
 // Aufruf: node tools/fetch-wikidata-banks.mjs [Länderkürzel ...]   (ohne Angabe: alle EU-Länder)
 import fs from 'node:fs';
-import { registrableDomain } from '../src/lib/domains.js';
+import { registrableDomain } from '../source/src/lib/domains.js';
 
 // EU-Mitgliedstaaten: Kürzel -> Wikidata-ID und Sprachen für die Namen
 const COUNTRIES = {
@@ -56,7 +56,7 @@ for (const cc of wanted) {
   console.log(`${cc}: ${rows.length} Treffer, ${kept} übernommen`);
 }
 out.sort((x, y) => x.c.localeCompare(y.c) || x.n.localeCompare(y.n));
-const file = new URL('../src/data/banks-wikidata.js', import.meta.url);
+const file = new URL('../source/src/data/banks-wikidata.js', import.meta.url);
 fs.writeFileSync(file, `// Banken in EU-Ländern aus Wikidata (CC0 1.0, https://www.wikidata.org), erzeugt mit tools/fetch-wikidata-banks.mjs
 // am ${new Date().toISOString().slice(0, 10)}. Nicht von Hand bearbeiten. c = Land, n = Name, a = weitere Namen, d = Domains, q = Wikidata-ID.
 export default ${JSON.stringify(out)};

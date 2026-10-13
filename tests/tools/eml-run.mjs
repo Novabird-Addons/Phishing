@@ -6,8 +6,8 @@
 // Nur für Tests: kleiner MIME-Parser, nicht Teil des Add-ons.
 import fs from 'node:fs';
 import path from 'node:path';
-import { buildFeatures } from '../../src/lib/features.js';
-import { analyze } from '../../src/lib/analyzer.js';
+import { buildFeatures } from '../../source/src/lib/features.js';
+import { analyze } from '../../source/src/lib/analyzer.js';
 
 function decodeBytes(buf, charset) {
   try { return new TextDecoder(charset || 'utf-8').decode(buf); } catch { return buf.toString('latin1'); }

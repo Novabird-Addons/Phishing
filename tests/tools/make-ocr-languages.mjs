@@ -21,5 +21,5 @@ export const TESSDATA_COMMIT = '${commit}';
 export const TESSDATA_BASE = 'https://raw.githubusercontent.com/${REPO}/${commit}/';
 export const OCR_MODELS = ${JSON.stringify(models)};
 `;
-fs.writeFileSync(new URL('../../src/data/ocr-languages.js', import.meta.url), out);
+fs.writeFileSync(new URL('../../source/src/data/ocr-languages.js', import.meta.url), out);
 console.log(models.length, 'Modelle, Commit', commit.slice(0, 7));
