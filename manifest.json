@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Novabird-phishing",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Lokaler, offline arbeitender Phishing-Schutz mit Absender-, Kontakt- und Thread-Prüfung.",
   "author": "NovaBird",
   "browser_specific_settings": {
