@@ -5,18 +5,81 @@
   if (window !== window.top) return;
   if (document.getElementById('phishing-pilot-banner')) return;
 
-  const state = { danger: false, trusted: false, host: null };
+  const state = { danger: false, trusted: false, host: null, mode: 'inline', defanged: false };
 
   // Andere Add-ons (z. B. NovaBird-Conversation) ersetzen den Inhalt des Nachrichtendokuments, auch nachträglich
   // (document.body.replaceChildren()). Dabei würde unser Banner gelöscht. Deshalb hängen wir ihn bei Bedarf wieder an:
   // in die Konversationsansicht als erstes Element (damit deren Layout stimmt), sonst in den <body>.
+  // Im Notfall-Modus ("fixed") hängt er als letztes Element am <html>, fest oben über allem.
   function attach() {
     const host = state.host;
     if (!host || state.trusted || !document.body) return;
+    if (state.mode === 'fixed') {
+      if (document.documentElement.lastElementChild !== host) document.documentElement.append(host);
+      return;
+    }
     const parent = document.getElementById('nbc-root') ?? document.body;
     if (host.parentNode !== parent) parent.prepend(host);
   }
   new MutationObserver(attach).observe(document.body, { childList: true });
+  new MutationObserver(attach).observe(document.documentElement, { childList: true });
+
+  // ---- Schutz gegen Verdecken: Eine Phishing-Mail kann per CSS eine Fläche über das Banner legen oder es ausblenden. ----
+  // 1) Sichtbarkeit und Ebene als Inline-Stil mit !important (schlägt jede Regel aus der Mail).
+  const FORCE = { display: 'block', visibility: 'visible', opacity: '1', position: 'relative', 'z-index': '2147483647',
+    transform: 'none', filter: 'none', 'clip-path': 'none', 'pointer-events': 'auto', 'max-height': 'none', overflow: 'visible' };
+  function harden(host) {
+    for (const [k, v] of Object.entries(FORCE)) host.style.setProperty(k, v, 'important');
+    if (state.mode === 'fixed') {
+      for (const [k, v] of Object.entries({ position: 'fixed', top: '0', left: '0', right: '0', margin: '8px' })) host.style.setProperty(k, v, 'important');
+    }
+  }
+  // 2) Liegt das Banner wirklich oben und ist es sichtbar (auch keine unsichtbaren Vorfahren)?
+  function onTop(host) {
+    const r = host.getBoundingClientRect();
+    if (r.width < 100 || r.height < 30) { state.why = `klein ${Math.round(r.width)}x${Math.round(r.height)}`; return false; }
+    for (let e = host.parentElement; e; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      if (Number(cs.opacity) < 0.9 || cs.visibility === 'hidden' || cs.filter !== 'none' || cs.clipPath !== 'none') {
+        state.why = `vorfahr ${e.tagName}#${e.id}.${e.className} op=${cs.opacity} vis=${cs.visibility} f=${cs.filter} cp=${cs.clipPath}`; return false;
+      }
+    }
+    return [[0.1, 0.3], [0.5, 0.5], [0.9, 0.7]].every(([fx, fy]) => {
+      const y = Math.min(r.top + r.height * fy, innerHeight - 1);
+      const t = y < 0 ? host : document.elementFromPoint(r.left + r.width * fx, y);
+      if (t !== host) state.why = `punkt ${fx},${fy} y=${Math.round(y)} top=${Math.round(r.top)} -> ${t?.tagName}#${t?.id}.${String(t?.className).slice(0, 40)}`;
+      return t === host;
+    });
+  }
+  // 3) Verdeckt? Dann die Stile dieser Mail abschalten (ihre <style>-Blöcke und Inline-Stile); hilft das nicht, Banner fest anheften.
+  function defang() {
+    for (const el of document.querySelectorAll('style, link[rel~="stylesheet"]')) {
+      if (/^(chrome|moz-extension|resource):/i.test(el.href || '')) continue;
+      if (el.sheet) el.sheet.disabled = true;
+    }
+    for (const el of document.querySelectorAll('[style]')) if (el !== state.host) el.removeAttribute('style');
+    state.defanged = true;
+    if (state.host) state.host.dataset.ppGuard = 'defanged';   // für Tests/Diagnose: Mail-Stile wurden abgeschaltet
+  }
+  // Eingreifen erst, wenn das Banner zweimal im Abstand von 800 ms verdeckt ist: Andere Add-ons (NovaBird-Conversation)
+  // blenden ihre Ansicht beim Öffnen kurz mit Deckkraft 0 ein – das ist keine Überdeckung.
+  let misses = 0, recheck = null;
+  function guard() {
+    const host = state.host;
+    if (!host || state.trusted || !host.isConnected || (scrollY > 20 && state.mode !== 'fixed')) return;
+    harden(host);
+    if (onTop(host)) { misses = 0; return; }
+    if (++misses < 2) { clearTimeout(recheck); recheck = setTimeout(guard, 800); return; }
+    host.dataset.ppWhy = state.why ?? '';
+    if (!state.defanged) { defang(); if (onTop(host)) return; }
+    if (state.mode !== 'fixed') {
+      state.mode = 'fixed';
+      host.dataset.ppGuard = 'fixed';
+      harden(host);
+      attach();
+      document.body?.style.setProperty('padding-top', `${host.offsetHeight + 16}px`, 'important');
+    }
+  }
 
   function render(payload) {
     if (state.trusted) return;
@@ -75,7 +138,11 @@
     root.append(style, box);
     state.host = host;
     state.ui = ui;
+    harden(host);
     attach();
+    // prüfen, sobald gezeichnet, und noch einmal, wenn Bilder und Schriften geladen sind
+    requestAnimationFrame(guard);
+    for (const ms of [300, 1000, 2500]) setTimeout(guard, ms);
   }
 
   // Echte Zieldomain per Tooltip – beim Darüberfahren, damit auch später eingefügte Links (z. B. Konversationsansicht) sie bekommen

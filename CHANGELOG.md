@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.5.1 – Banner lässt sich nicht mehr verdecken (2026-10-13)
+
+- **Sicherheitskorrektur:** Eine Phishing-Mail konnte das Warn-Banner mit eigenem CSS überdecken oder ausblenden (z. B. eine weiße Fläche mit „Alles in Ordnung“). Getestet mit 6 Tricks, vorher wirkten 5 davon. Jetzt bleibt das Banner immer sichtbar: Es setzt seine Sichtbarkeit unverrückbar, prüft nach dem Einblenden, ob es wirklich oben liegt, und schaltet sonst die Stile dieser Mail ab.
+- Mit NovaBird-Conversation getestet: dessen Einblend-Animation löst keinen Eingriff aus.
+
 ## 0.5.0 – erste öffentliche Version (2026-10-13)
 
 Lokaler Phishing-Schutz für Thunderbird/Betterbird, komplett offline.

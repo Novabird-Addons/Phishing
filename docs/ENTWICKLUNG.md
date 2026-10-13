@@ -190,6 +190,20 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
   markiert solche Absender per Kopfzeilen-Prüfung. Kürzel-Domains (`haspa.de`, `dkb.de`, `sskm.de`) gelten als zum Namen passend.
 - Screenshots: `tests/e2e/screenshots.mjs` (erfundene Demo-Mails, Domains `*.example`).
 
+## v0.5.1: Schutz gegen Verdecken des Banners
+
+- Befund (`tests/e2e/overlay.mjs`): Mail-CSS konnte das Banner verdecken – `position:fixed`/`absolute` mit höchstem z-index, negative
+  Ränder, `transform`, `<style>` mit `#phishing-pilot-banner{display:none!important}` und `body::before`-Fläche. 5 von 6 Tricks wirkten.
+  Thunderbirds eigener Tag im Mailkopf und die Link-Sperre blieben unberührt.
+- Abwehr in `src/content/banner.js`: (1) Sichtbarkeit/Ebene als Inline-Stil mit `!important` (schlägt jede Mail-Regel);
+  (2) Kontrolle per `elementFromPoint` an drei Punkten plus Deckkraft/Sichtbarkeit/Filter/clip-path aller Vorfahren, nach dem Zeichnen und
+  nach 0,3/1/2,5 s; (3) bei Verdeckung die Stile der Mail abschalten (`<style>`, Stylesheets außer chrome:/moz-extension:, Inline-Stile);
+  (4) notfalls Banner fest oben am `<html>` anheften. Eingriff erst, wenn das Banner zweimal im Abstand von 800 ms verdeckt ist –
+  NovaBird-Conversation blendet seine Ansicht beim Öffnen kurz mit Deckkraft 0 ein. `data-pp-guard` am Banner zeigt einen Eingriff an.
+- Tests: `node tests/e2e/overlay.mjs testext [ordner]` (6 Tricks, mit `EXTRA_ADDONS=testconv` auch mit Conversation; die Testkopie muss im
+  Projektordner liegen, weil das Snap-Thunderbird `/tmp` nicht sieht). Ergebnis: alle 6 abgewehrt, mit und ohne Conversation, kein
+  Fehleingriff im Durchklick-Test mit Conversation (17/17).
+
 ## Build und Namen
 
 `./build-xpi.sh` baut `dist/novabird-phishing-<version>.xpi` (ungesigniert) und behält die neueste Version plus die 3 vorherigen.
