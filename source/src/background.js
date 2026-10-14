@@ -455,6 +455,11 @@ async function handleMessage(msg, sender) {
       stored.trustedSenders = [...(stored.trustedSenders ?? []), verdict.author];
       await messenger.storage.local.set({ config: stored });
     }
+    // Warn-Tag dieser Mail entfernen, damit auch die Nachrichtenliste nicht mehr warnt
+    const shown = await messenger.messages.get(id).catch(() => null);
+    if (shown?.tags?.some((k) => Object.values(TAG_KEYS).includes(k))) {
+      await messenger.messages.update(id, { tags: shown.tags.filter((k) => !Object.values(TAG_KEYS).includes(k)) });
+    }
     return true;
   }
   return null;

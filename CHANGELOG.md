@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.5.6 – „Diesem Absender vertrauen“ funktioniert wieder (2026-10-14)
+
+- Behoben: Ein Klick auf „Diesem Absender vertrauen“ bewirkte nichts – die Rückfrage wurde als Browser-Dialog gestellt, den Thunderbird im Nachrichtenbereich (z. B. in NovaBird-Conversation) unterdrückt. Die Rückfrage erscheint jetzt direkt im Banner („Abbrechen“ / „Ja, vertrauen“, bei roten Warnungen weiterhin zweistufig). Danach verschwinden das Banner und auch das Warn-Tag in der Nachrichtenliste.
+- Weniger Fehlalarme: Antwortadresse mit gleichem Firmennamen unter anderer Endung (z. B. Absender `enjoy.eset.com`, Antwort an `eset.de`) gilt nicht mehr als fremde Domain – sofern der Absender per DKIM bestätigt oder bekannt ist. Unterdomains galten schon vorher als gleich.
+
 ## 0.5.5 – nur ein Banner pro Mail (2026-10-13)
 
 - Behoben: Das Warn-Banner erschien doppelt, wenn zusätzlich eine ältere Version mit der früheren Add-on-ID installiert war (seit 0.5.0 hat das Add-on eine neue ID, die alte Installation wird deshalb nicht ersetzt). Es erscheint jetzt immer genau ein Banner. **Ältere Versionen bitte trotzdem unter „Add-ons und Themes“ entfernen.**

@@ -565,3 +565,12 @@ test('Adressbücher: "Gesammelte Adressen" zählt standardmäßig nicht, gespeic
   assert.deepEqual(trustedBookIds(books, ['b']), ['b']);
   assert.deepEqual(trustedBookIds(books, []), []);
 });
+
+test('Reply-To: gleiche Firma unter anderer Endung nur mit DKIM-Bestätigung', () => {
+  const h = { from: ['ESET <info@enjoy.eset.test>'], 'reply-to': ['ESET <noreply@eset.example>'], subject: ['Angebot'] };
+  assert.ok(ids(analyze(mk(h), ctx())).includes('replyToForeign'));            // ohne DKIM: weiter Hinweis
+  const signed = { ...h, 'authentication-results': ['mx.me.de; dkim=pass header.d=enjoy.eset.test'] };
+  assert.ok(!ids(analyze(mk(signed), ctx())).includes('replyToForeign'));
+  const other = { ...signed, 'reply-to': ['x@eset-support.example'] };       // anderer Name bleibt fremd
+  assert.ok(ids(analyze(mk(other), ctx())).includes('replyToForeign'));
+});

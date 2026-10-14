@@ -270,7 +270,10 @@ export function analyze(features, ctx = {}, userConfig = {}) {
   if (nameMail && registrableDomain(nameMail[1].toLowerCase()) !== fromRd) add('displayNameEmail', [nameMail[0]]);
 
   // --- Reply-To ---
-  const foreignReply = f.replyTo.find((r) => addressDomain(r) !== fromRd && !(f.recipients ?? []).includes(r.address));
+  // Gleicher Firmenname unter anderer Endung (enjoy.eset.com → eset.de) zählt als dieselbe Firma – aber nur, wenn
+  // der Absender per DKIM bestätigt oder bekannt ist; sonst könnte ein Betrüger einfach paypal.<neue-endung> eintragen.
+  const sameOrg = (rd) => (dkimAligned || known) && rd && mainLabel(rd).length >= 3 && mainLabel(rd) === mainLabel(fromRd);
+  const foreignReply = f.replyTo.find((r) => { const rd = addressDomain(r); return rd !== fromRd && !sameOrg(rd) && !(f.recipients ?? []).includes(r.address); });
   if (foreignReply && !trustedList) add('replyToForeign', [foreignReply.address]);
 
   // --- Links ---
