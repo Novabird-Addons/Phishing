@@ -1,13 +1,13 @@
 {
   "name": "novabird-phishing",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "Lokaler Phishing-Schutz f\u00fcr Betterbird/Thunderbird",
   "type": "module",
   "private": true,
   "license": "MIT",
   "scripts": {
     "test": "node --test \"tests/*.test.js\"",
-    "e2e": "tests/e2e/build-testext.sh && tests/e2e/restart.sh && node tests/e2e/run.mjs work/testext active && tests/e2e/restart.sh && node tests/e2e/anonymize.mjs",
+    "e2e": "tests/e2e/build-testext.sh && tests/e2e/restart.sh && node tests/e2e/run.mjs work/testext active && tests/e2e/restart.sh && node tests/e2e/anonymize.mjs && tests/e2e/restart.sh && node tests/e2e/trust.mjs",
     "check": "node tests/tools/eml-run.mjs"
   }
 }
