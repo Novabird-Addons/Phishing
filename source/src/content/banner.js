@@ -129,6 +129,13 @@
       li { margin: 1px 0; }
       li.more, .pts { display: none; }
       .open li.more { display: list-item; color: #333; }
+      .ask { display: none; margin-top: 6px; padding: 6px 8px; border-radius: 6px; background: #fff; border: 1px solid ${danger ? '#E7A6A2' : '#E6C766'}; }
+      .asking .ask { display: block; }
+      .asking .actions { display: none; }
+      .ask p { margin: 0 0 6px; white-space: pre-line; }
+      .askbtns { display: flex; gap: 6px; justify-content: flex-end; }
+      button.yes { background: ${accent}; border-color: ${accent}; color: #fff; }
+      button:disabled { opacity: .6; cursor: default; }
       .open .pts { display: inline; margin-left: 6px; font-size: 11px; color: #666; font-variant-numeric: tabular-nums; }`;
     const box = document.createElement('div');
     box.className = 'box';
@@ -164,11 +171,29 @@
     }
     const trust = document.createElement('button');
     trust.textContent = ui.banner_trust;
-    trust.addEventListener('click', async () => {
-      // Sicherheitsabfrage; bei "gefährlich" zweistufig und mit Punktzahl
-      if (!confirm(danger ? ui.trust_confirm_dangerous.replace('{0}', score) : ui.trust_confirm)) return;
-      if (danger && !confirm(ui.trust_confirm_final)) return;
-      await api.runtime.sendMessage({ type: 'trustSender' });
+    // Rückfrage direkt im Banner: window.confirm() wird im Nachrichtenbereich (z. B. in NovaBird-Conversation)
+    // still unterdrückt und liefert sofort "Abbrechen" – dann passierte beim Klick scheinbar nichts.
+    const ask = document.createElement('div');
+    ask.className = 'ask';
+    const askText = document.createElement('p');
+    const yes = Object.assign(document.createElement('button'), { className: 'yes', textContent: ui.trust_yes });
+    const no = Object.assign(document.createElement('button'), { textContent: ui.trust_cancel });
+    const askBtns = document.createElement('div');
+    askBtns.className = 'askbtns';
+    askBtns.append(no, yes);
+    ask.append(askText, askBtns);
+    let step = 0;   // gefährlich: zwei Rückfragen, sonst eine
+    const showAsk = () => {
+      askText.textContent = step === 0 ? (danger ? ui.trust_confirm_dangerous.replace('{0}', score) : ui.trust_confirm) : ui.trust_confirm_final;
+      box.classList.add('asking');
+      yes.focus();
+    };
+    trust.addEventListener('click', () => { step = 0; showAsk(); });
+    no.addEventListener('click', () => { box.classList.remove('asking'); trust.focus(); });
+    yes.addEventListener('click', async () => {
+      if (danger && step === 0) { step = 1; showAsk(); return; }
+      yes.disabled = no.disabled = true;
+      await api.runtime.sendMessage({ type: 'trustSender' }).catch(() => {});
       state.trusted = true;
       state.danger = false;
       state.host?.remove();
@@ -178,7 +203,7 @@
     actions.append(why, trust);
     head.append(icon, h, small);
     foot.append(actions);
-    box.append(head, ul, foot);
+    box.append(head, ul, foot, ask);
     root.append(style, box);
     state.host = host;
     state.ui = ui;
