@@ -4,8 +4,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('../source/src/', import.meta.url).pathname;
+// fileURLToPath statt .pathname: unter Windows liefert .pathname "/C:/…"
+const root = fileURLToPath(new URL('../source/src/', import.meta.url));
 function* walk(dir) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);

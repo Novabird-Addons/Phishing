@@ -3,10 +3,14 @@
 # Tests, Testdaten und Doku bleiben draußen.
 set -euo pipefail
 cd "$(dirname "$0")"
-VERSION=$(python3 -c "import json;print(json.load(open('source/manifest.json'))['version'])")
+# Unter Windows ist "python3" oft nur der Store-Platzhalter (existiert, läuft aber nicht) – deshalb ausprobieren statt nur suchen
+PYTHON=python3
+"$PYTHON" -c '' 2>/dev/null || PYTHON=python
+VERSION=$("$PYTHON" -c "import json;print(json.load(open('source/manifest.json'))['version'])")
 OUT="dist/novabird-phishing-$VERSION.xpi"
+mkdir -p dist
 rm -f "$OUT"
-python3 - "$OUT" <<'PY'
+"$PYTHON" - "$OUT" <<'PY'
 import sys, zipfile, os
 out = sys.argv[1]
 with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
