@@ -115,7 +115,48 @@ test('Anhänge: HTML mit Passwortfeld, Doppel-Endung', () => {
   const f2 = mk({ from: ['a <a@neu.de>'], subject: ['x'] }, [
     html('<p>x</p>'), { contentType: 'application/octet-stream', name: 'rechnung.pdf.exe', body: '' },
   ]);
-  assert.ok(ids(analyze(f2, ctx())).includes('riskyAttachment'));
+  const r2 = analyze(f2, ctx());
+  assert.ok(ids(r2).includes('riskyAttachment') && ids(r2).includes('disguisedFile'));
+  assert.equal(r2.level, 'dangerous');
+});
+
+test('Anhänge: getarnter Inhalt, Programm im ZIP (auch vom Kontakt)', () => {
+  const att = (name, ct = 'application/octet-stream') => ({ contentType: ct, name, body: '' });
+  const withScan = (from, parts, attachmentScan) => buildFeatures({ headers: { from: [from], subject: ['Rechnung'] }, parts, attachmentScan });
+
+  // "Rechnung.pdf" ist in Wahrheit ein Windows-Programm: immer rot, auch vom Kontakt
+  const fake = analyze(withScan('Anna <anna@example.org>', [html('<p>anbei</p>'), att('Rechnung.pdf', 'application/pdf')],
+    { 'Rechnung.pdf': { realType: 'exe' } }), ctx());
+  assert.deepEqual(fake.signals.find((s) => s.id === 'disguisedFile').params, ['Rechnung.pdf']);
+  assert.equal(fake.level, 'dangerous');
+
+  // Programm im ZIP vom Kontakt: gelb (ansehen), nicht rot
+  const zip = { 'Unterlagen.zip': { realType: 'zip', archive: { entries: [{ name: 'setup.exe', encrypted: false }] } } };
+  const fromContact = analyze(withScan('Anna <anna@example.org>', [html('<p>anbei</p>'), att('Unterlagen.zip')], zip), ctx());
+  assert.deepEqual(fromContact.signals.find((s) => s.id === 'archiveRisky').params, ['Unterlagen.zip', 'setup.exe']);
+  assert.equal(fromContact.level, 'suspicious');
+
+  // Getarnter Name im ZIP: rot
+  const zip2 = { 'scan.zip': { realType: 'zip', archive: { entries: [{ name: 'Scan_0815.pdf.js', encrypted: false }] } } };
+  const r = analyze(withScan('Buchhaltung <info@neu-xyz.de>', [html('<p>anbei</p>'), att('scan.zip')], zip2), ctx());
+  assert.ok(ids(r).includes('disguisedFile') && !ids(r).includes('archiveRisky'));
+  assert.equal(r.level, 'dangerous');
+
+  // Harmloses ZIP und echte PDF: nichts
+  const ok = analyze(withScan('Anna <anna@example.org>', [html('<p>anbei</p>'), att('Fotos.zip'), att('Rechnung.2024.pdf')],
+    { 'Fotos.zip': { realType: 'zip', archive: { entries: [{ name: 'IMG_1.jpg' }] } }, 'Rechnung.2024.pdf': { realType: 'pdf' } }), ctx());
+  assert.ok(!ids(ok).some((id) => ['disguisedFile', 'archiveRisky', 'riskyAttachment'].includes(id)));
+  assert.equal(ok.level, 'normal');
+});
+
+test('Verrufene Top-Level-Domain: nur verstärkend, nie allein', () => {
+  const alone = analyze(mk({ from: ['Shop <info@angebote.xyz>'], subject: ['Neu im Sortiment'] }), ctx());
+  assert.ok(ids(alone).includes('badTld'));
+  assert.equal(alone.level, 'normal');
+  const link = analyze(mk({ from: ['Shop <info@neu.de>'], subject: ['x'] }, [html('<a href="https://login.konto-pruefung.top/a">hier</a>')]), ctx());
+  assert.deepEqual(link.signals.find((s) => s.id === 'badTld').params, ['.top']);
+  const contact = analyze(mk({ from: ['Anna <anna@example.org>'], subject: ['x'] }, [html('<a href="https://foto.club/a">Bilder</a>')]), ctx());
+  assert.ok(!ids(contact).includes('badTld'));
 });
 
 test('Als vertrauenswürdig markierter Absender unterdrückt Signale, nicht DMARC-Fail', () => {
@@ -181,6 +222,21 @@ test('Gekaperter bekannter Absender: großes Bild als Link auf Fremddomain wird 
   assert.ok(ids(known).includes('imageLinkForeign'));
   assert.ok(known.score >= 30, 'Bonus für bekannte Absender darf nicht greifen: ' + known.score);
   assert.notEqual(known.level, 'normal');
+});
+
+test('Logo einer Schwesterfirma (Alt-Text nennt das Ziel) ist kein Bild-Köder – nur mit DKIM', () => {
+  // Steam-Mail: Fußzeilen-Logo "Valve" verlinkt auf valvesoftware.com
+  const valve = '<a href="https://store.steampowered.com/"><img width="780" src="https://shared.fastly.steamstatic.com/b.jpg"></a>' +
+    '<a href="http://www.valvesoftware.com?snr=1"><img src="https://cdn.fastly.steamstatic.com/logo_valve.jpg" width="165" height="48" alt="Valve" /></a>';
+  const h = { from: ['Steam <noreply@steampowered.com>'], subject: ['Angebot'] };
+  const dkim = { 'authentication-results': ['mx.me.de; dkim=pass header.i=@steampowered.com; spf=pass; dmarc=pass'] };
+  assert.ok(!ids(analyze(mk({ ...h, ...dkim }, [html(valve)]), ctx())).includes('imageLinkForeign'));
+  // ohne DKIM-Nachweis bleibt der Hinweis
+  assert.ok(ids(analyze(mk(h, [html(valve)]), ctx())).includes('imageLinkForeign'));
+  // gekapertes Konto mit DKIM: Köder-Beschriftung zählt nie als Logo, auch wenn sie im Zielnamen steckt
+  const bait = '<a href="https://dokumente-portal.example/x"><img width="400" height="120" src="cid:i1" alt="Dokument anzeigen"></a>';
+  assert.ok(ids(analyze(mk({ from: ['K <k@firma-partner.de>'], subject: ['Anfrage'],
+    'authentication-results': ['mx.me.de; dkim=pass header.i=@firma-partner.de'] }, [html(bait)]), ctx())).includes('imageLinkForeign'));
 });
 
 test('Kleine Signatur-Icons, Social-Links und Newsletter lösen den Bild-Link-Alarm nicht aus', () => {

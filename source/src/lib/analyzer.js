@@ -3,6 +3,7 @@ import {
 } from './domains.js';
 import { addressDomain } from './headers.js';
 import { buildFeatures, imageKey } from './features.js';
+import { RISKY_EXT } from './files.js';
 import { detectExtortion } from './scam.js';
 import { domainSkeleton, nameKey, normalizeText, skeleton } from './text.js';
 import { mergeConfig } from './config.js';
@@ -13,10 +14,6 @@ const SHORTENERS = new Set([
   'bit.ly', 'tinyurl.com', 't.co', 'goo.gl', 'ow.ly', 'is.gd', 'buff.ly', 'rebrand.ly',
   'cutt.ly', 'shorturl.at', 'tiny.cc', 'rb.gy', 'lnkd.in', 'bit.do', 't.ly',
   'clck.ru', 'v.gd', 'shorte.st', 'adf.ly', 'urlz.fr', 'qr.net', 'tr.ee', 'soo.gd', 's.id', 'bl.ink', 'ift.tt', 'dlvr.it', 'bitly.com', 'vk.cc', 'cli.re',
-]);
-const RISKY_EXT = new Set([
-  'html', 'htm', 'xhtml', 'svg', 'iso', 'img', 'lnk', 'js', 'jse', 'vbs', 'vbe', 'wsf', 'hta',
-  'exe', 'scr', 'bat', 'cmd', 'ps1', 'msi', 'jar', 'docm', 'xlsm', 'pptm', 'dotm', 'xlam', 'chm', 'one',
 ]);
 const PRESSURE = [
   'dringend', 'sofort', 'ihr konto', 'gesperrt', 'verifizieren', 'bestatigen sie', 'letzte warnung',
@@ -39,6 +36,15 @@ const SOCIAL = new Set(['linkedin.com', 'xing.com', 'facebook.com', 'instagram.c
 const IMAGE_CTA = ['anzeigen', 'offnen', 'freigegeben', 'zugesandt', 'herunterladen', 'download', 'viewdocument',
   'reviewdocument', 'opendocument', 'jetztprufen', 'jetztanmelden', 'anmelden', 'signin', 'login', 'verify', 'bestatigen'];
 const compact = (s) => skeleton(s).replace(/[^\p{L}\p{N}]+/gu, '');
+// Wörter, mit denen Köder-Bilder beschriftet sind – ein solches Bild ist nie "das Logo der Zielseite"
+const BAIT_ALT = /dokument|document|datei|file|rechnung|invoice|scan|pdf|fax|freigabe|share|onedrive|sharepoint|dropbox|docusign|voicemail|nachricht|message|konto|account|login|sign/;
+/** Logo, dessen Alt-Text die Zieldomain nennt ("Valve" -> valvesoftware.com): ein Hinweis auf eine Schwesterfirma, kein Köder. */
+function logoOfTarget(alt, rd) {
+  const label = skeleton(mainLabel(rd)).replace(/[^a-z0-9]+/g, '');
+  const a = skeleton(alt || '');
+  if (BAIT_ALT.test(a) || IMAGE_CTA.some((w) => compact(alt || '').includes(w))) return false;
+  return a.replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(' ').some((w) => w.length >= 4 && !ORG_KEY_STOP.has(w) && label.includes(w));
+}
 // Anlage-/Krypto-Köder (Spam, der an das Geld will): mindestens zwei verschiedene Begriffe plus Dringlichkeit/Verlockung
 const INVEST_TERMS = ['bitcoin', 'krypto', 'crypto', 'ethereum', 'trading', 'forex', 'rendite', 'investier', 'invest in', 'anlagetipp',
   'passives einkommen', 'passive income', 'garantiert', 'reich werden', 'verdopp', 'handelsplattform', 'broker', 'einstiegspunkt', 'abschwung'];
@@ -46,6 +52,14 @@ const INVEST_HOOKS = ['jetzt', 'idealer', 'einstieg', 'chance', 'nur noch', 'heu
 const ACCOUNT_WORDS = ['konto', 'zahlung', 'abonnement', 'passwort', 'payment', 'account', 'subscription', 'verifiz', 'bestatigen', 'sperr', 'gekundigt', 'abgelaufen'];
 const PASSWORD_HINT = /passwor|kennwort|password/i;
 const LEVELS = ['normal', 'suspicious', 'dangerous'];
+// Top-Level-Domains, die überdurchschnittlich oft für Spam/Phishing genutzt werden (billig oder kostenlos, kaum Kontrolle).
+// Nur ein schwaches Signal: Es gibt dort auch echte Seiten. .zip/.mov sehen zudem wie Dateinamen aus.
+const BAD_TLDS = new Set(['zip', 'mov', 'click', 'surf', 'live', 'sbs', 'date', 'pw', 'quest', 'biz', 'top', 'gq', 'ml', 'cf', 'ga',
+  'tk', 'bid', 'xyz', 'country', 'stream', 'download', 'loan', 'win', 'men', 'club', 'work', 'icu', 'cfd', 'cyou', 'rest', 'buzz', 'monster']);
+export function badTld(host) {
+  const tld = String(host || '').toLowerCase().replace(/\.$/, '').split('.').pop();
+  return BAD_TLDS.has(tld) ? tld : '';
+}
 
 // Lieferdienste werden in Shop-Mails ständig erwähnt ("wird von Hermes zugestellt"), das ist kein Markenvorgeben
 const CARRIERS = new Set(['dhl', 'deutschepost', 'hermes', 'dpd', 'ups', 'gls', 'fedex', 'postat', 'postch', 'postnl', 'laposte', 'bpost', 'inpost']);
@@ -308,7 +322,7 @@ export function analyze(features, ctx = {}, userConfig = {}) {
     if (l.hasImage && !l.text && rd !== fromRd) imgForeign.push({ rd, small: /(?:^|\D)(\d{1,2}|[1-5]\d|6[0-4])x(\d{1,2}|[1-5]\d|6[0-4])(?:\D|$)/.test(l.imgSrc ?? '') });
     if (l.text && rd !== fromRd) textLinkRds.add(rd);
     if (!imageLink && !trustedList && l.hasImage && !l.text && (l.imgWidth >= 150 || (l.imgWidth === 0 && (l.imgHeight === 0 || l.imgHeight >= 100))) && rd !== fromRd &&
-        !SOCIAL.has(rd) && !brandDomains.includes(rd) && !(l.imgSrc && /(?:^|\D)([1-5]?\d|6[0-4])x([1-5]?\d|6[0-4])(?:\D|$)/.test(l.imgSrc))) imageLink = [h.host, rd];
+        !SOCIAL.has(rd) && !brandDomains.includes(rd) && !((dkimAligned || known) && logoOfTarget(l.imgAlt, rd)) && !(l.imgSrc && /(?:^|\D)([1-5]?\d|6[0-4])x([1-5]?\d|6[0-4])(?:\D|$)/.test(l.imgSrc))) imageLink = [h.host, rd];
     if (!abused && ABUSED_HOST.some((re) => re.test(h.host))) abused = [h.host];
     if (!userinfo && (h.url.username || h.url.password)) userinfo = [h.host];
     if (!redirect && /[?&](?:url|u|redirect|redir|target|dest|link|goto)=https?(?::|%3a)/i.test(h.url.search)) redirect = [h.host];
@@ -344,8 +358,13 @@ export function analyze(features, ctx = {}, userConfig = {}) {
   const loginAtt = f.attachments.find((a) => a.loginForm);
   if (loginAtt) add('loginForm', [loginAtt.name]);
   else if (f.bodyLoginForm) add('loginForm', ['']);
-  const risky = f.attachments.find((a) => RISKY_EXT.has(a.ext) || a.doubleExt);
+  const risky = f.attachments.find((a) => RISKY_EXT.has(a.ext));
   if (risky) add('riskyAttachment', [risky.name]);
+  // Getarnt: Doppel-Endung/Schreibrichtungs-Trick im Namen, oder der Inhalt ist etwas anderes als die Endung sagt
+  const disguised = f.attachments.find((a) => a.disguised || a.typeMismatch || a.archive?.disguisedEntry);
+  if (disguised) add('disguisedFile', [disguised.archive?.disguisedEntry ? disguised.archive.riskyEntry : disguised.name]);
+  const inArchive = f.attachments.find((a) => a.archive?.riskyEntry && !a.archive.disguisedEntry);
+  if (inArchive) add('archiveRisky', [inArchive.name, inArchive.archive.riskyEntry]);
   if (f.hasArchive && PASSWORD_HINT.test(f.text)) add('passwordArchive');
 
   // --- Marke im Betreff/Textanfang bei fremdem Absender (Marke im Text ist oft mit Leerzeichen getarnt) ---
@@ -376,6 +395,10 @@ export function analyze(features, ctx = {}, userConfig = {}) {
   if (detectExtortion(f.text, { isList: trustedList })) add('extortion');
   if (f.fillerToken) add('fillerText', [f.fillerToken]);
   if (f.invisibleCount >= 40) add('invisiblePadding', [f.invisibleCount]);   // schwach: Preheader-Padding nutzen auch legitime Newsletter
+
+  // --- Verrufene Top-Level-Domains (Absender oder Links): schwach, verstärkt nur andere Hinweise ---
+  const badTlds = [...new Set([from.domain, ...linkHosts].map(badTld).filter(Boolean))];
+  if (badTlds.length && !isContact) add('badTld', [badTlds.map((x) => '.' + x).join(', ')]);
 
   // --- Schwache Signale ---
   const pressure = PRESSURE.filter((w) => lowered.includes(w));
@@ -418,7 +441,7 @@ function result(signals, cfg, sender = {}) {
   // Bekannte Absender: Bonus, außer bei Hinweisen auf Fälschung oder Übernahme.
   // Fälschung (DMARC, Lookalike) oder Kontoübernahme (fremde Bild-/Hosting-Links, Formulare, riskante Anhänge)
   const spoofy = signals.some((s) => ['learnedNameMismatch', 'dmarcFail', 'spfFail', 'lookalikeDomain', 'replyToForeign', 'mixedScript',
-    'imageLinkForeign', 'qrForeignLink', 'extortion', 'imageBrandMismatch', 'abusedHost', 'linkMismatch', 'loginForm', 'riskyAttachment'].includes(s.id));
+    'imageLinkForeign', 'qrForeignLink', 'extortion', 'imageBrandMismatch', 'abusedHost', 'linkMismatch', 'loginForm', 'riskyAttachment', 'disguisedFile', 'archiveRisky'].includes(s.id));
   if (sender.known && !spoofy) score += cfg.knownSenderBonus;
 
   // Nur schwache Signale: nie eine Warnung.

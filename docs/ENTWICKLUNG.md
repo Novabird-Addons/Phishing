@@ -273,6 +273,39 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
 - Durchklick-Test meldet doppelte Banner (`DOPPELT(n)`).
 - Ordner: lokale Daten in `testdata/`, Testerzeugnisse in `work/`.
 
+## v0.6.0: Anhänge genauer prüfen
+
+Anlass: Rückmeldung eines Nutzers (Doppel-Endungen, gefährliche Archive, Base64-Kennungen von Programmen, verrufene TLDs).
+Logik in `source/src/lib/files.js` (rein, getestet in `tests/files.test.js`), Bytes liest `source/src/attachments.js`
+(`messages.listAttachments` + `getAttachmentFile`, höchstens 10 Anhänge bis 50 MB, nur Ausschnitte per `Blob.slice`).
+
+| Signal | Gewicht | Stufe | Wann |
+|---|---|---|---|
+| `disguisedFile` | 60 | erzwingt „gefährlich“ | Dokument-Endung vor gefährlicher Endung, Schreibrichtungs-Steuerzeichen (U+202E u. a.), Inhalt passt nicht zur Endung (Programm/Verknüpfung/Skript/HTML hinter `.pdf`, `.jpg`, `.docx`, `.zip` …), getarnter Name im ZIP |
+| `archiveRisky` | 35 | erzwingt „verdächtig“ | ZIP enthält eine Datei mit gefährlicher Endung (`RISKY_EXT`) |
+| `badTld` | 8 | schwach | Absender- oder Link-Domain endet auf eine verrufene TLD; nicht bei Kontakten |
+
+- **Doppel-Endung** nur, wenn die *zweite* Endung gefährlich ist: Der vorgeschlagene Ausdruck `\.[a-z0-9]+\.[a-z0-9]+$` hätte
+  `Rechnung.2024.pdf`, `backup.tar.gz` und `Protokoll_v1.2.docx` getroffen.
+- **Echter Typ statt Base64-Muster:** Die Kennungen aus der Rückmeldung (`TVqQAAM` = „MZ“ eines Windows-Programms in Base64) prüft
+  `sniffType()` direkt an den dekodierten ersten Bytes (MZ, ELF, Mach-O, LNK, `#!`, HTML/SVG, ZIP, RAR, 7z, PDF, OLE, ISO …).
+  Gemeldet wird nur, wenn eine Dokument-, Bild- oder Archiv-Endung etwas Ausführbares oder eine Webseite verbirgt – falsch benannte
+  Bilder oder `deploy.sh` mit `#!` nicht.
+- **ZIP:** gelesen wird nur das Inhaltsverzeichnis am Dateiende (kein Entpacken, kein ZIP64, verschachtelte Archive nicht). Nur echte
+  `.zip`-Dateien – `.docx`/`.xlsx` sind intern ebenfalls ZIP und enthalten oft SVG-Grafiken. RAR/7z werden nicht geöffnet.
+- **TLD-Liste** (`BAD_TLDS` in `analyzer.js`): aus der Rückmeldung plus `.icu`, `.cfd`, `.cyou`, `.rest`, `.buzz`, `.monster`.
+  Bewusst schwach, weil es auf `.live`, `.club`, `.biz` usw. auch echte Seiten gibt.
+- **„Blockieren“:** Die Add-on-API kann das Öffnen eines Anhangs nicht verhindern; Anhänge zu löschen wäre unumkehrbar.
+  Bei „gefährlich“ bleibt es deshalb bei rotem Banner, Tag und gesperrten Links; der Grund sagt ausdrücklich „Nicht öffnen“.
+- **Nicht übernommen:** AbuseIPDB (bräuchte Internet und API-Schlüssel, widerspricht „keine Verbindung ins Internet“).
+- Der Erstscan der Absenderhistorie liest weiterhin keine Anhänge.
+- **Fehlalarm Steam** (`imageLinkForeign`): Fußzeilen-Logo `alt="Valve"` (165×48) verlinkt auf `valvesoftware.com`, Mail von
+  `steampowered.com`. Ausnahme `logoOfTarget()`: Bild-Link zählt nicht, wenn ein Wort des Alt-Texts (≥ 4 Zeichen) im Namen der
+  Zieldomain steckt **und** DKIM zur Absender-Domain passt (oder der Absender bekannt ist). Köder-Wörter (`BAIT_ALT`: Dokument,
+  Rechnung, Datei, OneDrive, Login … sowie `IMAGE_CTA`) heben die Ausnahme auf – sonst käme ein gekapertes Konto mit
+  „Dokument“ → `dokumente-portal…` durch. Link-Extraktion liefert dafür `imgAlt`.
+- Offen: Regressionstest gegen `testdata/legitset` und `phishingset` (`npm run check`) – lag beim Bau unter Windows nicht vor.
+
 ## Build und Namen
 
 `./build-xpi.sh` baut `dist/novabird-phishing-<version>.xpi` (ungesigniert) und behält die neueste Version plus die 3 vorherigen.

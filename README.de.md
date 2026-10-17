@@ -24,7 +24,8 @@ Das Banner zeigt die zwei wichtigsten Gründe sofort. **„Warum?“** zeigt all
 - **Antworten ohne Vorgeschichte** – „AW: …“, obwohl du nie geschrieben hast.
 - **Köder in Bildern** – ein Bild „Dokument anzeigen“ (Texterkennung, lokal) oder ein **QR-Code**, der auf eine fremde Seite führt.
 - **Erpressungs-Mails** („Ich habe Ihre Kamera gehackt … zahlen Sie in Bitcoin“) und **Krypto-Lockangebote**.
-- **Typische Fälscher-Spuren** – Impressum und Datenschutz führen ins Leere, zufällig aussehende Absender-Domains.
+- **Gefährliche Anhänge** – Programme und Skripte, auch **in ZIP-Dateien**; Dateien, die nur harmlos tun (`Rechnung.pdf.exe`, eine „PDF“, die in Wahrheit ein Programm ist).
+- **Typische Fälscher-Spuren** – Impressum und Datenschutz führen ins Leere, zufällig aussehende Absender-Domains, bei Spammern beliebte Domain-Endungen (`.xyz`, `.top` … – nur als zusätzlicher Hinweis).
 
 ## Was ist besser als die eingebaute Prüfung von Thunderbird?
 
