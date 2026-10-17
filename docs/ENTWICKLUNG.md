@@ -30,6 +30,24 @@ npm test          # Unit-Tests (Node, schnell)
 npm run e2e       # Headless-Thunderbird per Marionette (Snap-Thunderbird, Port 2828)
 ```
 
+### Arbeitsplätze: Linux und Windows
+
+Bis 0.5.6 wurde nur unter Linux entwickelt. Unter Windows liegt der Klon in **`C:\Claude-phishing`** (Git Bash: `/c/Claude-phishing`);
+Shell-Skripte dort in Git Bash starten, nicht in PowerShell.
+
+| | Linux | Windows |
+|---|---|---|
+| `npm test` | ja | ja (53/53) |
+| `./build-xpi.sh` | ja | ja, in Git Bash. Nimmt `python3`, sonst `python` – unter Windows ist `python3` oft nur der Store-Platzhalter |
+| `npm run e2e` | ja (Snap-Thunderbird `/snap/bin/thunderbird`, `setsid`, `ss`) | nein – die Skripte setzen Linux und das Snap-Thunderbird voraus |
+| `npm run check` | ja | sollte gehen (reines Node), noch nicht geprüft |
+
+- **Pfade in Node-Skripten:** `fileURLToPath(new URL(…, import.meta.url))` statt `.pathname` – unter Windows liefert `.pathname`
+  `/C:/…`, daraus wird `C:\C:\…`.
+- **Zeilenenden:** `.gitattributes` checkt `*.sh` immer mit LF aus, damit derselbe Ordner auch unter WSL/Linux läuft. Die übrigen
+  Textdateien bekommen unter Windows mit `core.autocrlf=true` CRLF; ein dort gebautes XPI ist deshalb nicht byte-gleich mit dem
+  Linux-Build (andere SHA-256), funktioniert aber genauso. Releases weiter unter Linux bauen.
+
 Aufbau: `source/src/lib/` reine Logik (getestet), `source/src/background.js` Thunderbird-Anbindung,
 `source/src/content/banner.js` Banner, `tests/e2e/` Marionette-Client + Testprofil.
 
