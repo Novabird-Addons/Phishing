@@ -13,6 +13,7 @@ import { contactInfo, trustedBookIds } from './lib/contacts.js';
 import { findQrUrls } from './qr.js';
 import { ocrImages, resetOcr } from './ocr.js';
 import { loadEmbeddedImages } from './images.js';
+import { scanAttachments } from './attachments.js';
 import { fetchRemoteImages, remoteScanAllowed } from './remote.js';
 import { imageKey } from './lib/features.js';
 import { t, uiStrings } from './i18n.js';
@@ -311,7 +312,8 @@ async function computeVerdict(messageId) {
   const extra = remoteExtras.get(messageId);
   const images = await loadEmbeddedImages(messageId).catch((e) => { console.warn('Bilder nicht lesbar', e?.message); return []; });
   const qrUrls = [...await findQrUrls(images).catch((e) => { console.warn('QR-Suche fehlgeschlagen', e?.message); return []; }), ...(extra?.qrUrls ?? [])];
-  const features = buildFeatures({ headers, parts: flattenParts(full), qrUrls }, config);
+  const attachmentScan = await scanAttachments(messageId).catch((e) => { console.warn('Anhänge nicht lesbar', e?.message); return {}; });
+  const features = buildFeatures({ headers, parts: flattenParts(full), qrUrls, attachmentScan }, config);
   let ocrLanguages = extra?.languages ?? [];
   let ocrMs = 0;
   if (config.ocr) {

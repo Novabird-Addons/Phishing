@@ -1,5 +1,20 @@
 # Änderungen
 
+## 0.6.0 – Anhänge genauer prüfen (2026-10-17)
+
+Auf Anregung aus einer Nutzer-Rückmeldung.
+
+- Neu: **Getarnte Anhänge** werden rot gemeldet. Erkannt werden:
+  - eine Dokument-Endung vor einer gefährlichen Endung (`Rechnung.pdf.exe`, `Scan.jpg   .html`),
+  - Steuerzeichen, die die Schreibrichtung umdrehen (aus `Rechnung[RTLO]fdp.exe` wird auf dem Bildschirm `Rechnungexe.pdf`),
+  - Dateien, deren Inhalt nicht zur Endung passt: Das Add-on liest die ersten Bytes jedes Anhangs. Ist eine „Rechnung.pdf“ in Wahrheit ein Windows-Programm oder ein „Scan.jpg“ eine Webseite, gibt es eine Warnung.
+  - „Rechnung.2024.pdf“ oder „backup.tar.gz“ zählen nicht.
+- Neu: **Blick in ZIP-Dateien**, ohne sie zu entpacken. Liegt darin ein Programm, Skript oder eine Webseite, gibt es mindestens „Vorsicht“, auch von bekannten Absendern; rot wird es zusammen mit weiteren Hinweisen oder bei getarntem Namen.
+- Neu: **Verrufene Domain-Endungen** (`.xyz`, `.top`, `.tk`, `.zip` …) beim Absender oder in Links zählen als schwacher Hinweis – nie allein ein Grund zu warnen, aber sie verstärken andere.
+- Weniger Fehlalarme: Ein Logo, dessen Beschriftung die verlinkte Seite nennt (Steam-Mail mit „Valve“-Logo auf `valvesoftware.com`), gilt nicht mehr als Bild-Köder – sofern die Mail per DKIM vom Absender bestätigt ist. Beschriftungen wie „Dokument anzeigen“ zählen nie als Logo.
+- Mehr gefährliche Endungen: `.com`, `.pif`, `.cpl`, `.reg`, `.vhd(x)`, `.appx`, `.msix`, `.url`.
+- Entwicklung: Unit-Tests und `build-xpi.sh` laufen jetzt auch unter Windows (Git Bash).
+
 ## 0.5.6 – „Diesem Absender vertrauen“ funktioniert wieder (2026-10-14)
 
 - Behoben: Ein Klick auf „Diesem Absender vertrauen“ bewirkte nichts – die Rückfrage wurde als Browser-Dialog gestellt, den Thunderbird im Nachrichtenbereich (z. B. in NovaBird-Conversation) unterdrückt. Die Rückfrage erscheint jetzt direkt im Banner („Abbrechen“ / „Ja, vertrauen“, bei roten Warnungen weiterhin zweistufig). Danach verschwinden das Banner und auch das Warn-Tag in der Nachrichtenliste.

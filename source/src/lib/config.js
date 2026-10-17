@@ -7,7 +7,7 @@ export const DEFAULT_CONFIG = {
     contactImpersonation: 40, replyNoThread: 30, replyThreadUnknown: 30,
     brandNameMismatch: 40, lookalikeDomain: 40, mixedScript: 30,
     displayNameEmail: 25, linkMismatch: 35, loginForm: 45,
-    riskyAttachment: 35, passwordArchive: 20,
+    riskyAttachment: 35, passwordArchive: 20, disguisedFile: 60, archiveRisky: 35, badTld: 8,
     firstContact: 10, firstContactClaims: 15,
     replyToForeign: 20, ipLink: 20, shortener: 15, urlUserinfo: 30,
     brandInContent: 25, abusedHost: 15, imageLinkForeign: 30, qrForeignLink: 25, imageBrandMismatch: 45, imageCta: 10, extortion: 70, fillerText: 20, invisiblePadding: 8, randomDomain: 20, investmentPromo: 25, redirectParam: 10, placeholderLinks: 20, orgNameMismatch: 20, learnedNameMismatch: 30, bankNameMismatch: 25, nameDomainMismatch: 10, pressureWords: 8, imageOnly: 8, hiddenText: 6,
@@ -18,9 +18,11 @@ export const DEFAULT_CONFIG = {
     replyNoThread: 'suspicious',
     replyThreadUnknown: 'suspicious',
     extortion: 'dangerous',   // Erpressung ist eindeutig, unabhängig vom Absender
+    disguisedFile: 'dangerous',  // getarnter Anhang ("Rechnung.pdf" ist ein Programm): kein harmloser Grund denkbar
+    archiveRisky: 'suspicious',  // Programm/Skript im ZIP: immer ansehen; rot erst zusammen mit weiteren Hinweisen
   },
   // Signalklassen; reine "weak"-Treffer können nie warnen.
-  weak: ['firstContact', 'nameDomainMismatch', 'pressureWords', 'imageOnly', 'hiddenText', 'shortener', 'redirectParam', 'invisiblePadding'],
+  weak: ['firstContact', 'nameDomainMismatch', 'pressureWords', 'imageOnly', 'hiddenText', 'shortener', 'redirectParam', 'invisiblePadding', 'badTld'],
   knownSenderBonus: -15,
   trustedAuthservIds: [],
   ownDomains: [],

@@ -24,7 +24,8 @@ The banner shows the two most important reasons right away. **“Why?”** lists
 - **Replies out of nowhere** – “Re: …” although you never wrote to them.
 - **Bait in images** – a picture saying “View document” (text recognition, done locally) or a **QR code** pointing to a foreign site.
 - **Extortion emails** (“I hacked your camera … pay in Bitcoin”) and **crypto investment lures**.
-- **Typical forger traces** – legal notice and privacy links that lead nowhere, random-looking sender domains.
+- **Dangerous attachments** – programs and scripts, also **inside ZIP files**; files that only pretend to be harmless (`invoice.pdf.exe`, a “PDF” that is really a program).
+- **Typical forger traces** – legal notice and privacy links that lead nowhere, random-looking sender domains, domain endings popular with spammers (`.xyz`, `.top` … – only ever as an extra hint).
 
 ## What’s better than Thunderbird’s built-in check?
 

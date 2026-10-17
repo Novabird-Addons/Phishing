@@ -4,6 +4,9 @@ import {
 import {
   extractLinks, extractTextLinks, hasHiddenText, hasImage, hasPasswordInput, stripTags,
 } from './html.js';
+import { ARCHIVE_EXT, disguisedName, fileExt, inspectArchive, typeMismatch } from './files.js';
+
+export { doubleExtension, fileExt } from './files.js';
 
 /**
  * Manche Spam-Mails streuen ein immer gleiches Wort zwischen fast alle anderen (gegen Spamfilter).
@@ -22,23 +25,12 @@ export function detectFiller(text) {
 
 const INVISIBLE = /[\u200b-\u200f\u2060\ufeff\u034f\u00ad\u2800\u180e\u3164]/g;
 const REPLY_SUBJECT = /^\s*(?:re|aw|antw|sv|vs|odp)(?:\[\d+\])?\s*:/i;
-const ARCHIVE_EXT = new Set(['zip', '7z', 'rar', 'gz', 'tar', 'iso', 'img']);
-
-export function fileExt(name) {
-  const m = String(name || '').toLowerCase().match(/\.([a-z0-9]{1,8})$/);
-  return m ? m[1] : '';
-}
-
-/** Alle Namen einer Datei, um Doppel-Endungen zu erkennen: a.pdf.exe */
-export function doubleExtension(name) {
-  return /\.(pdf|docx?|xlsx?|jpe?g|png|txt)\s*\.(exe|scr|js|vbs|bat|cmd|lnk|hta|com|jar)$/i.test(name || '');
-}
-
 /**
  * Baut aus rohen Daten ein reines Merkmals-Objekt (kein Zugriff auf Thunderbird).
  * @param {{headers:object, parts:Array<{contentType:string,name?:string,body?:string}>}} input
+ *   attachmentScan: Prüfergebnis je Anhangsname (aus background.js): { realType, archive: { entries } }
  */
-export function buildFeatures({ headers, parts = [], qrUrls = [], imageTexts = {} }, config = {}) {
+export function buildFeatures({ headers, parts = [], qrUrls = [], imageTexts = {}, attachmentScan = {} }, config = {}) {
   const h = normalizeHeaders(headers);
   const from = parseAddressList(firstHeader(h, 'from'))[0] ?? null;
   const replyTo = parseAddressList(firstHeader(h, 'reply-to'));
@@ -56,9 +48,13 @@ export function buildFeatures({ headers, parts = [], qrUrls = [], imageTexts = {
     const isAttachment = !!p.name && !(ct.startsWith('text/') && !fileExt(p.name));
     if (isAttachment) {
       const ext = fileExt(p.name);
+      const scan = attachmentScan[p.name];
       attachments.push({
         name: p.name, ext, contentType: ct,
-        doubleExt: doubleExtension(p.name),
+        disguised: disguisedName(p.name),
+        realType: scan?.realType ?? '',
+        typeMismatch: typeMismatch(p.name, scan?.realType),
+        archive: scan?.archive ? inspectArchive(scan.archive.entries) : null,
         loginForm: /html|svg/.test(ext + ct) && hasPasswordInput(p.body || ''),
       });
     } else if (ct === 'text/html') html += (p.body || '') + '\n';

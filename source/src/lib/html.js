@@ -63,6 +63,7 @@ export function extractLinks(html) {
       imgWidth: img ? imageWidth(img[0]) : 0,
       imgHeight: img ? imageHeight(img[0]) : 0,
       imgSrc: img ? attr(img[0], 'src') : '',
+      imgAlt: img ? attr(img[0], 'alt') : '',
     });
   }
   return links;

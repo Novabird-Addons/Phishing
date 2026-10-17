@@ -1,6 +1,6 @@
 {
   "name": "novabird-phishing",
-  "version": "0.5.6",
+  "version": "0.6.0",
   "description": "Lokaler Phishing-Schutz f\u00fcr Betterbird/Thunderbird",
   "type": "module",
   "private": true,
