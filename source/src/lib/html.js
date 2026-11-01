@@ -69,6 +69,20 @@ export function extractLinks(html) {
   return links;
 }
 
+/** Verschleierter Programmcode in angehängtem HTML/SVG: Skript baut den Inhalt erst zur Laufzeit auf.
+ *  Dekodier-Funktionen oder lange Base64-/Hex-Ketten im Skript, und daneben kaum sichtbarer Text. */
+export function hasObfuscatedScript(html) {
+  const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)].map((m) => m[1]);
+  const handlers = html.match(/\bon(?:load|error|click|focus)\s*=\s*("[^"]*"|'[^']*')/gi) ?? [];
+  const src = scripts.join('\n') + ' ' + handlers.join(' ');
+  if (!src.trim()) return false;
+  // Eine gespeicherte echte Webseite hat viel sichtbaren Text – die bleibt außen vor
+  if (stripTags(html.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, ' ')).length >= 600) return false;
+  if (/\b(atob|unescape|String\.fromCharCode)\s*\(/.test(src)) return true;
+  if (/["'][A-Za-z0-9+/]{400,}={0,2}["']/.test(src)) return true;
+  return /(?:\\x[0-9a-f]{2}|%[0-9a-f]{2}){60,}/i.test(src);
+}
+
 /** URLs aus Klartext. */
 export function extractTextLinks(text) {
   return [...text.slice(0, MAX_HTML).matchAll(/\bhttps?:\/\/[^\s<>"')\]]+/gi)]

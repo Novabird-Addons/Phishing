@@ -26,6 +26,8 @@ Das Banner zeigt die zwei wichtigsten Gründe sofort. **„Warum?“** zeigt all
 - **Erpressungs-Mails** („Ich habe Ihre Kamera gehackt … zahlen Sie in Bitcoin“) und **Krypto-Lockangebote**.
 - **Gefährliche Anhänge** – Programme und Skripte, auch **in ZIP-Dateien**; Dateien, die nur harmlos tun (`Rechnung.pdf.exe`, eine „PDF“, die in Wahrheit ein Programm ist).
 - **Typische Fälscher-Spuren** – Impressum und Datenschutz führen ins Leere, zufällig aussehende Absender-Domains, bei Spammern beliebte Domain-Endungen (`.xyz`, `.top` … – nur als zusätzlicher Hinweis).
+- **Bezug zu früheren Mails** – nennt ein neuer Absender (etwa ein Paketdienst) eine Bestell- oder Sendungsnummer aus einer früheren echten Mail, entfällt der Hinweis „neuer Absender“.
+- **Optional mit lokaler KI** – ist die [NovaBird](https://github.com/Novabird-Addons)-Extension mit einem Modell im eigenen Rechner oder Netz eingerichtet, erkennt der Schutz zusätzlich, als wer sich eine Mail ausgibt, und versteckte Anweisungen an KI-Assistenten. Die KI kann Warnungen nur verstärken, nie aufheben; Cloud-Dienste werden nie gefragt.
 
 ## Was ist besser als die eingebaute Prüfung von Thunderbird?
 

@@ -1,5 +1,7 @@
 // Anbindung an Thunderbird/Betterbird. Die Bewertung selbst steckt in lib/ (rein, getestet).
-import { analyze, headerSuspicion, nameMatchesDomain, orgKey } from './lib/analyzer.js';
+import { analyze, headerSuspicion, nameMatchesDomain, orgKey, relatedCouldHelp } from './lib/analyzer.js';
+import { extractAnchors } from './lib/anchors.js';
+import { NOVABIRD_ID, parseAiFacts } from './lib/ai.js';
 import { buildFeatures } from './lib/features.js';
 import { mergeConfig } from './lib/config.js';
 import { nameKey } from './lib/text.js';
@@ -280,6 +282,97 @@ async function threadFoundLocally(features) {
   return false;
 }
 
+// ---------- Bezug zu früheren Mails (Bestell-, Sendungs-, Rechnungsnummern; lib/anchors.js) ----------
+// Gesucht wird im Betreff aller Konten (Kopfdaten) und im Text nur bei lokalen Konten – bei IMAP würde eine
+// Volltextsuche ohne Offline-Kopie Mails vom Server holen. Die frühere Mail zählt nur, wenn ein Angreifer sie
+// nicht selbst vorbereitet haben kann: selbst verschickt, von einem Kontakt/etablierten Absender, oder per DKIM
+// bestätigt von einer *anderen* Domain, mindestens 12 Stunden älter und unauffällig.
+const RELATED_DAYS = 180;
+const RELATED_DKIM_MIN_AGE = 12 * 60 * 60_000;
+async function findRelated(header, features, contacts, idx) {
+  const anchors = extractAnchors(features.subject, features.text, 3);
+  if (!anchors.length) return null;
+  const date = msgTime(header) ?? Date.now();
+  const range = { fromDate: new Date(date - RELATED_DAYS * DAY), toDate: new Date(date) };
+  const config = await getConfig();
+  const excluded = new Set(config.historyExcludedFolders);
+  const localIds = (await messenger.accounts.list(false)).filter((a) => LOCAL_ACCOUNT_TYPES.includes(a.type)).map((a) => a.id);
+  const fromRd = features.from ? registrableDomain(features.from.domain) : '';
+  for (const anchor of anchors) {
+    const queries = [{ subject: anchor, ...range }, ...localIds.map((accountId) => ({ accountId, body: anchor, ...range }))];
+    for (const q of queries) {
+      const res = await messenger.messages.query(q).catch(() => ({ messages: [] }));
+      for (const m of res.messages) {
+        if (m.id === header.id || m.headerMessageId === header.headerMessageId) continue;
+        if (m.junk || (m.tags ?? []).some((k) => Object.values(TAG_KEYS).includes(k))) continue;
+        if (m.folder && (isSkippedFolder(m.folder) || excluded.has(folderKey(m.folder)))) continue;
+        if (await trustedEarlier(m, date, fromRd, contacts, idx)) return { anchor, date: msgTime(m) };
+      }
+    }
+  }
+  return null;
+}
+async function trustedEarlier(m, date, fromRd, contacts, idx) {
+  const t = msgTime(m);
+  if (t === null || t >= date) return false;
+  if (m.folder && folderUses(m.folder).includes('sent')) return true;
+  const author = parseAddressList(m.author)[0]?.address;
+  if (!author) return false;
+  if (contacts.addresses.has(author) || trustLevel(idx[author])) return true;
+  if (date - t < RELATED_DKIM_MIN_AGE || headerSuspicion(m.author).length) return false;
+  const f = buildFeatures({ headers: await messenger.messages.getHeaders(m.id), parts: [] });
+  const rd = f.from ? registrableDomain(f.from.domain) : '';
+  return !!rd && rd !== fromRd && f.auth.dmarc !== 'fail' && (f.auth.dkimDomains ?? []).some((d) => registrableDomain(d) === rd);
+}
+
+// ---------- Lokale KI über die NovaBird-Extension (docs/ki-schnittstelle.md) ----------
+// Die Extension fragt ihr eingestelltes Modell nur, wenn es lokal läuft, und liefert geprüfte Fakten. Ohne Extension,
+// ohne eingeschaltete "Phishing-Prüfung" oder bei Fehlern bleibt es bei den Regeln.
+const AI_TIMEOUT = 3500;
+const aiFacts = new Map();        // messageId -> geprüfte Fakten (auch aus nachgereichtem phish:result)
+let novabirdAbsentUntil = 0;      // Extension nicht installiert: eine Minute lang nicht erneut fragen
+async function askNovaBird(messageId) {
+  if (aiFacts.has(messageId)) return aiFacts.get(messageId);
+  if (Date.now() < novabirdAbsentUntil) return null;
+  let res;
+  try {
+    res = await Promise.race([
+      messenger.runtime.sendMessage(NOVABIRD_ID, { type: 'phish:extract', messageId }),
+      new Promise((resolve) => setTimeout(() => resolve({ ok: false, error: 'timeout' }), AI_TIMEOUT)),
+    ]);
+  } catch { novabirdAbsentUntil = Date.now() + 60_000; return null; }
+  const facts = parseAiFacts(res);
+  // "busy": das Ergebnis kommt später als phish:result; bis dahin zählt nur die regelbasierte injection
+  if (facts && res?.ok === true) rememberAiFacts(messageId, facts);
+  return facts;
+}
+function rememberAiFacts(messageId, facts) {
+  aiFacts.set(messageId, facts);
+  if (aiFacts.size > 500) aiFacts.delete(aiFacts.keys().next().value);
+}
+// Nachgereichtes Ergebnis nach "busy". Nur von der NovaBird-Extension; Listener bewusst nicht async.
+messenger.runtime.onMessageExternal.addListener((msg, sender) => {
+  if (sender?.id !== NOVABIRD_ID || msg?.type !== 'phish:result' || !Number.isInteger(msg.messageId)) return;
+  const facts = parseAiFacts(msg);
+  if (!facts) return;
+  rememberAiFacts(msg.messageId, facts);
+  reevaluate(msg.messageId).catch((e) => console.warn('Neubewertung nach KI-Ergebnis', e?.message));
+});
+/** Bewertung neu rechnen, Tag anpassen und ein offenes Banner ersetzen. */
+async function reevaluate(messageId) {
+  verdictCache.delete(messageId);
+  const verdict = await evaluate(messageId);
+  const config = await getConfig();
+  if (config.mode === 'shadow') return;
+  if (config.tagMessages && verdict.level !== 'normal') { await ensureTags(); await applyTag(messageId, verdict.level); }
+  for (const tab of await messenger.tabs.query({})) {
+    const shown = await messenger.messageDisplay.getDisplayedMessages(tab.id).catch(() => null);
+    if (shown?.messages?.length === 1 && shown.messages[0].id === messageId) {
+      await messenger.tabs.sendMessage(tab.id, { type: 'verdictUpdate', verdict: verdict.level === 'normal' ? null : bannerPayload(verdict) }).catch(() => {});
+    }
+  }
+}
+
 const verdictCache = new Map();
 // Ergebnisse der Fremdbild-Prüfung (nur mit Zustimmung): messageId -> { imageTexts, qrUrls }
 const remoteExtras = new Map();
@@ -333,7 +426,17 @@ async function computeVerdict(messageId) {
     historyByName: hist.byName, history: hist.lookup, learnedNames: hist.learnedNames,
     threadFound: await threadFoundLocally(features),
   };
-  return { ...analyze(features, ctx, config), messageId, headerMessageId: header.headerMessageId, author: features.from?.address, ocrLanguages, ocrMs };
+  let verdict = analyze(features, ctx, config);
+  // KI nur bei Mails mit Hinweisen (unbekannte Absender haben immer mindestens "Neuer Absender"), nicht bei klar roten
+  if (config.useNovaBirdAi && verdict.level !== 'dangerous' && verdict.signals.length && !config.trustedSenders.includes(features.from?.address)) {
+    const ai = await askNovaBird(messageId);
+    if (ai) { ctx.ai = ai; verdict = analyze(features, ctx, config); }
+  }
+  if (relatedCouldHelp(verdict)) {
+    const related = await findRelated(header, features, contacts, idx).catch((e) => { console.warn('Bezug-Suche', e?.message); return null; });
+    if (related) verdict = analyze(features, { ...ctx, related }, config);
+  }
+  return { ...verdict, messageId, headerMessageId: header.headerMessageId, author: features.from?.address, ocrLanguages, ocrMs };
 }
 
 // ---------- Tags ----------
@@ -390,10 +493,16 @@ messenger.messages.onNewMailReceived.addListener(async (folder, list) => {
 }, true);
 
 function reasons(verdict) {
-  return verdict.signals.map((s) => {
+  const out = verdict.signals.map((s) => {
     const key = 'sig_' + s.id + (s.id === 'lookalikeDomain' ? '_' + s.params[2] : '');
     return { id: s.id, weight: s.weight, text: t(lang(), key, s.params) };
   });
+  // Bezug gefunden, aber trotzdem eine Warnung: zeigen, damit klar ist, dass er berücksichtigt wurde
+  if (verdict.related) {
+    const day = new Date(verdict.related.date).toLocaleDateString(lang());
+    out.push({ id: 'related', weight: 0, text: t(lang(), 'info_related', [verdict.related.anchor, day]) });
+  }
+  return out;
 }
 
 function bannerPayload(verdict) {

@@ -259,6 +259,11 @@
     if (payload) render(payload);
   }
 
+  // Nachgereichte Bewertung (z. B. Ergebnis der lokalen KI kam später): Banner ersetzen
+  api.runtime.onMessage.addListener((msg) => {
+    if (msg?.type === 'verdictUpdate' && msg.verdict) render(msg.verdict);
+  });
+
   let res;
   try { res = await api.runtime.sendMessage({ type: 'getVerdict' }); } catch { return; }
   if (!res) return;

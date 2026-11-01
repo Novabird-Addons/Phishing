@@ -4,58 +4,116 @@
 <meta charset="utf-8">
 <title>Novabird-phishing</title>
 <style>
-  body { font: 14px system-ui, sans-serif; max-width: 640px; margin: 16px; }
+  :root { color-scheme: light dark; --line: color-mix(in srgb, currentColor 18%, transparent); }
+  body { font: menu; font-size: 13px; max-width: 720px; margin: 16px; background: Canvas; color: CanvasText; }
+  html.hub body { max-width: none; margin: 8px 4px; }
+  html.hub h1 { display: none; }
+  h1 { font-size: 1.5em; margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
+  h1 img { width: 28px; height: 28px; }
+  section.card { border: 1px solid var(--line); border-radius: 10px; padding: 4px 16px 14px; margin: 0 0 14px; }
+  section.card > h2 { font-size: 1.1em; margin: 12px 0 2px; }
+  section.card > p.intro { color: GrayText; margin: 0 0 6px; }
   label { display: block; margin: 12px 0 4px; font-weight: 600; }
-  textarea, select { width: 100%; box-sizing: border-box; }
-  small { color: #666; display: block; margin-top: 2px; }
-  .row { margin: 6px 0 2px; }
-  #folders label { font-weight: normal; margin: 2px 0; display: block; }
-  #langs label { font-weight: normal; margin: 2px 0; }
+  textarea, select { width: 100%; box-sizing: border-box; font: inherit; }
+  input[type="number"] { width: 6em; }
+  small { color: GrayText; display: block; margin-top: 2px; line-height: 1.4; }
+  .row { margin: 6px 0 2px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row select { width: auto; flex: 1 1 16em; }
+  .checks label, #folders label, #langs label, #books label { font-weight: normal; margin: 3px 0; }
   #langs button { margin: 0 0 0 8px; padding: 0 6px; }
-  button { margin-top: 12px; margin-right: 8px; }
+  #folders { max-height: 240px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 4px 0 24px; }
+  .actions button.primary { background: AccentColor; color: AccentColorText; border: 0; border-radius: 6px; padding: 6px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+  #saveStatus { color: AccentColor; }
+  /* Status der lokalen KI */
+  .status { display: flex; align-items: flex-start; gap: 10px; margin: 10px 0 4px; padding: 8px 12px; border-radius: 8px;
+    background: color-mix(in srgb, currentColor 5%, transparent); }
+  .status .dot { flex: none; width: 12px; height: 12px; border-radius: 50%; margin-top: 3px; background: GrayText; }
+  .status.ok .dot { background: #2e9d48; box-shadow: 0 0 0 3px color-mix(in srgb, #2e9d48 25%, transparent); }
+  .status.warn .dot { background: #d9a400; }
+  .status .txt b { display: block; }
+  .status .txt span { color: GrayText; }
+  /* Hinweis in der Add-on-Verwaltung: Einstellungen stehen unter Einstellungen → NovaBird */
+  html.addons body > :not(#hubNote) { display: none !important; }
+  #hubNote { margin: 1.5rem 1rem; padding: 1.2rem 1.4rem; border: 1px solid var(--line); border-radius: .8rem; max-width: 34rem; }
+  #hubNote h2 { margin: 0 0 .5rem; font-size: 1.15em; }
+  #hubNote p { margin: 0 0 1rem; line-height: 1.45; }
+  #hubNote .open { padding: .4rem 1rem; border: 0; border-radius: .4rem; background: AccentColor; color: AccentColorText; font: inherit; cursor: pointer; }
+  #hubNote a { display: block; margin-top: .6rem; color: inherit; opacity: .8; }
 </style>
 </head>
 <body>
-<h1>Novabird-phishing</h1>
-<label for="mode" data-i18n="opt_mode"></label>
-<select id="mode">
-  <option value="active" data-i18n="opt_mode_active"></option>
-  <option value="shadow" data-i18n="opt_mode_shadow"></option>
-</select>
-<label data-i18n="opt_books"></label>
-<div id="books"></div>
-<small data-i18n="opt_books_hint"></small>
-<label><input type="checkbox" id="ocr"> <span data-i18n="opt_ocr"></span></label>
-<small data-i18n="opt_ocr_hint"></small>
-<label data-i18n="opt_langs"></label>
-<div id="langs"></div>
-<small data-i18n="opt_langs_hint"></small>
-<div class="row">
-  <select id="addLang"></select>
-  <button id="addLangBtn" type="button" data-i18n="opt_download"></button>
-  <span id="langStatus"></span>
-</div>
-<small data-i18n-html="opt_download_hint"></small>
-<label><input type="checkbox" id="scanRemote"> <span data-i18n="opt_remote"></span></label>
-<small data-i18n-html="opt_remote_hint"></small>
-<label for="historyMonths" data-i18n="opt_months"></label>
-<input type="number" id="historyMonths" min="1" max="18" step="1">
-<small data-i18n="opt_months_hint"></small>
-<label data-i18n="opt_folders"></label>
-<div id="folders"></div>
-<small data-i18n="opt_folders_hint"></small>
-<label for="authservIds" data-i18n="opt_authserv"></label>
-<textarea id="authservIds" rows="3"></textarea>
-<small data-i18n-html="opt_authserv_hint"></small>
-<label for="ownDomains" data-i18n="opt_own"></label>
-<textarea id="ownDomains" rows="3"></textarea>
-<small data-i18n="opt_own_hint"></small>
-<label for="trusted" data-i18n="opt_trusted"></label>
-<textarea id="trusted" rows="3"></textarea>
-<div>
-  <button id="save" data-i18n="opt_save"></button>
-  <button id="export" data-i18n="opt_export"></button>
+<section id="hubNote" hidden>
+  <h2 data-i18n="opt_hub_title"></h2>
+  <p data-i18n="opt_hub_text"></p>
+  <button type="button" class="open" id="hubOpen" data-i18n="opt_hub_open"></button>
+  <a href="#" id="hubHere" data-i18n="opt_hub_here"></a>
+</section>
+
+<h1><img src="../icons/icon-48.png" alt=""> <span>Novabird-phishing</span></h1>
+
+<section class="card">
+  <h2 data-i18n="opt_sec_protection"></h2>
+  <label for="mode" data-i18n="opt_mode"></label>
+  <select id="mode">
+    <option value="active" data-i18n="opt_mode_active"></option>
+    <option value="shadow" data-i18n="opt_mode_shadow"></option>
+  </select>
+</section>
+
+<section class="card">
+  <h2 data-i18n="opt_sec_ai"></h2>
+  <div class="status" id="aiStatus"><span class="dot"></span><span class="txt"><b id="aiStatusTitle"></b><span id="aiStatusText"></span></span></div>
+  <div class="checks"><label><input type="checkbox" id="useAi"> <span data-i18n="opt_ai"></span></label></div>
+  <small data-i18n-html="opt_ai_hint"></small>
+</section>
+
+<section class="card">
+  <h2 data-i18n="opt_sec_images"></h2>
+  <div class="checks"><label><input type="checkbox" id="ocr"> <span data-i18n="opt_ocr"></span></label></div>
+  <small data-i18n="opt_ocr_hint"></small>
+  <label data-i18n="opt_langs"></label>
+  <div id="langs"></div>
+  <small data-i18n="opt_langs_hint"></small>
+  <div class="row">
+    <select id="addLang"></select>
+    <button id="addLangBtn" type="button" data-i18n="opt_download"></button>
+    <span id="langStatus"></span>
+  </div>
+  <small data-i18n-html="opt_download_hint"></small>
+  <div class="checks"><label><input type="checkbox" id="scanRemote"> <span data-i18n="opt_remote"></span></label></div>
+  <small data-i18n-html="opt_remote_hint"></small>
+</section>
+
+<section class="card">
+  <h2 data-i18n="opt_sec_senders"></h2>
+  <label data-i18n="opt_books"></label>
+  <div id="books"></div>
+  <small data-i18n="opt_books_hint"></small>
+  <label for="historyMonths" data-i18n="opt_months"></label>
+  <input type="number" id="historyMonths" min="1" max="18" step="1">
+  <small data-i18n="opt_months_hint"></small>
+  <label data-i18n="opt_folders"></label>
+  <div id="folders"></div>
+  <small data-i18n="opt_folders_hint"></small>
+</section>
+
+<section class="card">
+  <h2 data-i18n="opt_sec_trust"></h2>
+  <label for="trusted" data-i18n="opt_trusted"></label>
+  <textarea id="trusted" rows="3"></textarea>
+  <label for="ownDomains" data-i18n="opt_own"></label>
+  <textarea id="ownDomains" rows="3"></textarea>
+  <small data-i18n="opt_own_hint"></small>
+  <label for="authservIds" data-i18n="opt_authserv"></label>
+  <textarea id="authservIds" rows="3"></textarea>
+  <small data-i18n-html="opt_authserv_hint"></small>
+</section>
+
+<div class="actions">
+  <button id="save" class="primary" data-i18n="opt_save"></button>
   <button id="rescan" data-i18n="opt_rescan"></button>
+  <button id="export" data-i18n="opt_export"></button>
   <span id="saveStatus"></span>
 </div>
 <script type="module" src="options.js"></script>

@@ -224,6 +224,88 @@ test('Gekaperter bekannter Absender: großes Bild als Link auf Fremddomain wird 
   assert.notEqual(known.level, 'normal');
 });
 
+test('Verschleierter Programmcode in HTML-Anhängen', () => {
+  const blob = 'A'.repeat(450);
+  const evil = { contentType: 'text/html', name: 'Rechnung.html',
+    body: `<html><body><script>document.write(atob("${blob}"));</script></body></html>` };
+  const r = analyze(mk({ from: ['Buchhaltung <info@neu-xyz.de>'], subject: ['Rechnung'] }, [html('<p>anbei</p>'), evil]), ctx());
+  assert.ok(ids(r).includes('obfuscatedHtml') && ids(r).includes('riskyAttachment'));
+  assert.equal(r.level, 'dangerous');
+  // auch vom Kontakt (gekapertes Konto): kein Bonus
+  const c = analyze(mk({ from: ['Anna <anna@example.org>'], subject: ['Doc'] }, [html('<p>x</p>'), evil]), ctx());
+  assert.equal(c.level, 'dangerous');
+  // gespeicherte echte Webseite mit viel Text und Skript: kein Treffer
+  const page = { contentType: 'text/html', name: 'artikel.html',
+    body: `<html><body><p>${'Viel sichtbarer Artikeltext. '.repeat(40)}</p><script>x=atob("abc");</script></body></html>` };
+  assert.ok(!ids(analyze(mk({ from: ['Anna <anna@example.org>'], subject: ['Artikel'] }, [html('<p>x</p>'), page]), ctx())).includes('obfuscatedHtml'));
+});
+
+test('Kalender-Einladung: fremder Link meldet, Besprechungsdienste und eigene Domain nicht', () => {
+  const ics = (url) => ({ contentType: 'text/calendar', name: 'einladung.ics',
+    body: `BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nDESCRIPTION:Details:\r\n ${url}\r\nEND:VEVENT\r\nEND:VCALENDAR` });
+  const H = { from: ['Orga <orga@firma-partner.de>'], subject: ['Termin'] };
+  const bad = analyze(mk(H, [html('<p>Einladung</p>'), ics('https://termin-bestaetigen.example/login')]), ctx());
+  assert.deepEqual(bad.signals.find((s) => s.id === 'calendarForeignLink').params, ['termin-bestaetigen.example']);
+  assert.ok(!ids(analyze(mk(H, [html('<p>x</p>'), ics('https://us02web.zoom.us/j/123')]), ctx())).includes('calendarForeignLink'));
+  assert.ok(!ids(analyze(mk(H, [html('<p>x</p>'), ics('https://firma-partner.de/raum/4')]), ctx())).includes('calendarForeignLink'));
+  // Kalender-Links laufen auch durch die normalen Link-Prüfungen (Verkürzer)
+  assert.ok(ids(analyze(mk(H, [html('<p>x</p>'), ics('https://bit.ly/x1')]), ctx())).includes('shortener'));
+});
+
+test('Erpressungstext im Bild (OCR) wird erkannt', () => {
+  const scamText = 'Ich habe Ihre Webcam gehackt und werde die Videos an alle Ihre Kontakte versenden. ' +
+    'Zahlen Sie 900 Euro in Bitcoin an das Wallet innerhalb von 48 Stunden. Nicht antworten, keine Polizei.';
+  const f = mk({ from: ['x <x@unbekannt-123.de>'], subject: ['Wichtig'] }, [html('<p><img src="cid:brief.png"></p>')]);
+  f.imageTexts = { 'brief.png': scamText };
+  const r = analyze(f, ctx());
+  assert.ok(ids(r).includes('extortion'));
+  assert.equal(r.level, 'dangerous');
+  // harmloser Bildtext löst nichts aus
+  const f2 = mk({ from: ['x <x@unbekannt-123.de>'], subject: ['Foto'] }, [html('<p><img src="cid:gruss.png"></p>')]);
+  f2.imageTexts = { 'gruss.png': 'Herzlichen Glückwunsch zum Geburtstag wünscht das ganze Team aus der Werkstatt!' };
+  assert.ok(!ids(analyze(f2, ctx())).includes('extortion'));
+});
+
+test('Reply-To: abgeschnittene Empfängeradresse und bestätigte Dienstleister nur schwach', () => {
+  // PayPal trägt die Empfängeradresse abgeschnitten ein ("....")
+  const cut = mk({ from: ['"service@paypal.de" <service@paypal.de>'], to: ['Max Mustermann <max.mustermann@firma-beispiel.de>'],
+    'reply-to': ['Max Mustermann <max.mustermann@firma-beispiel....>'], subject: ['Zahlung'],
+    'authentication-results': ['mx.me.de; dkim=pass header.i=@paypal.de'] });
+  assert.ok(!ids(analyze(cut, ctx())).some((id) => id.startsWith('replyToForeign')));
+
+  // Zahlungsabwickler: DKIM bestätigt, Antwort an den Helpdesk des Händlers -> schwach
+  const psp = mk({ from: ['HomeByMe <mailer@fastspring.com>'], to: ['a <a@b.de>'],
+    'reply-to': ['<support@homebyme.zendesk.com>'], subject: ['Abo'],
+    'authentication-results': ['mx.me.de; dkim=pass header.i=@fastspring.com'] });
+  const r = analyze(psp, ctx());
+  assert.ok(ids(r).includes('replyToForeignAuthed') && !ids(r).includes('replyToForeign'));
+  assert.equal(r.level, 'normal');
+
+  // BEC: DKIM bestätigt, aber Antwort an Freemail -> bleibt stark
+  const bec = mk({ from: ['Buchhaltung <chef@firma-partner.de>'], to: ['a <a@b.de>'],
+    'reply-to': ['<chef.firma@gmail.com>'], subject: ['Überweisung'],
+    'authentication-results': ['mx.me.de; dkim=pass header.i=@firma-partner.de'] });
+  assert.ok(ids(analyze(bec, ctx())).includes('replyToForeign'));
+  // ohne DKIM ebenfalls stark
+  const plain = mk({ from: ['X <x@neu.de>'], to: ['a <a@b.de>'], 'reply-to': ['<y@anders-corp.com>'], subject: ['Hi'] });
+  assert.ok(ids(analyze(plain, ctx())).includes('replyToForeign'));
+});
+
+test('Anlage-Werbung: abonnierter Finanz-Newsletter mit DKIM ruhig, Spam von Zufallsdomain nicht', () => {
+  const body = html('<p>Trading und Bitcoin: jetzt investieren, der ideale Einstieg!</p><a href="https://x.de/u">Abmelden</a>');
+  const list = { 'list-unsubscribe': ['<mailto:u@x.de>'], subject: ['Still interested in trading ideas?'] };
+  const ok = mk({ from: ['Stocktwits <automated@stocktwits.com>'], ...list,
+    'authentication-results': ['mx.me.de; dkim=pass header.i=@stocktwits.com'] }, [body]);
+  assert.ok(!ids(analyze(ok, ctx())).includes('investmentPromo'));
+  // gleiche Mail von einer Zufallsdomain: Liste und DKIM helfen nicht
+  const spam = mk({ from: ['Trading Tipps <info@5yngrqr7.com>'], ...list,
+    'authentication-results': ['mx.me.de; dkim=pass header.i=@5yngrqr7.com'] }, [body]);
+  assert.ok(ids(analyze(spam, ctx())).includes('investmentPromo'));
+  // ohne Listen-Header ebenfalls weiterhin
+  const noList = mk({ from: ['Krypto <info@chance-invest.de>'], subject: ['Reich werden'] }, [body]);
+  assert.ok(ids(analyze(noList, ctx())).includes('investmentPromo'));
+});
+
 test('Logo einer Schwesterfirma (Alt-Text nennt das Ziel) ist kein Bild-Köder – nur mit DKIM', () => {
   // Steam-Mail: Fußzeilen-Logo "Valve" verlinkt auf valvesoftware.com
   const valve = '<a href="https://store.steampowered.com/"><img width="780" src="https://shared.fastly.steamstatic.com/b.jpg"></a>' +
