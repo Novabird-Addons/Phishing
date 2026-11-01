@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Novabird-phishing",
-  "version": "0.6.0",
+  "version": "0.9.0",
   "description": "__MSG_extensionDescription__",
   "author": "NovaBird",
   "browser_specific_settings": {
@@ -24,6 +24,11 @@
       "run_at": "document_end"
     }
   ],
+  "icons": {
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png"
+  },
   "options_ui": {
     "page": "options/options.html"
   },

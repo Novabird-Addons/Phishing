@@ -32,6 +32,9 @@ const ABUSED_HOST = [
 ];
 // Häufige, legitime Ziele von Signatur-Icons (Bild-Links).
 const SOCIAL = new Set(['linkedin.com', 'xing.com', 'facebook.com', 'instagram.com', 'youtube.com', 'twitter.com', 'x.com', 'kununu.com', 'whatsapp.com']);
+// Übliche Ziele echter Kalender-Einladungen (Videokonferenzen, Terminplaner)
+const MEETING_HOSTS = new Set(['zoom.us', 'microsoft.com', 'office.com', 'teams.live.com', 'google.com', 'webex.com',
+  'gotomeeting.com', 'goto.com', 'calendly.com', 'doodle.com', 'teamviewer.com', 'jit.si', 'bluejeans.com']);
 // Aufforderungen auf Köder-Bildern ("Dokument anzeigen"), ohne Diakritika und Leerzeichen verglichen.
 const IMAGE_CTA = ['anzeigen', 'offnen', 'freigegeben', 'zugesandt', 'herunterladen', 'download', 'viewdocument',
   'reviewdocument', 'opendocument', 'jetztprufen', 'jetztanmelden', 'anmelden', 'signin', 'login', 'verify', 'bestatigen'];
@@ -86,6 +89,20 @@ function ownedLookalike(hit, rd) {
   return !!(b && brandOwns(b, rd)) || BANK_NAMES_BY_DOMAIN.has(rd);
 }
 const brandDomains = BRANDS.flatMap((b) => b.domains);
+/** Passt das, was die KI als Absender der Mail erkannt hat (Organisation/Website), zur Absender-Domain? */
+function claimFits(ai, fromRd) {
+  if (!ai.claimedOrg && !ai.claimedDomain) return true;
+  if (ai.claimedDomain) {
+    const rd = registrableDomain(ai.claimedDomain);
+    if (rd === fromRd || mainLabel(rd) === mainLabel(fromRd)) return true;
+  }
+  if (ai.claimedOrg) {
+    if (nameMatchesDomain(ai.claimedOrg, fromRd) || isAcronymOf(mainLabel(fromRd), ai.claimedOrg)) return true;
+    const norm = ' ' + domainSkeleton(ai.claimedOrg).replace(/[^a-z0-9&]+/g, ' ') + ' ';
+    if (BRANDS.some((b) => brandOwns(b, fromRd) && b.names.some((n) => norm.includes(' ' + domainSkeleton(n) + ' ')))) return true;
+  }
+  return false;
+}
 // Anzeigename ohne jeden Bezug zur Absender-Domain. Bei Personen und Diensten über Versanddienstleister häufig (schwach),
 // bei Namen, die eine Organisation behaupten ("Deutsche Kreditbank-AG" von kindercomicfestival.de), ein starkes Zeichen.
 const NAME_STOP = new Set(['der', 'die', 'das', 'und', 'ihr', 'ihre', 'von', 'the', 'and', 'team', 'service', 'info', 'news',
@@ -187,7 +204,8 @@ function textDomain(text) {
  * @param features Ergebnis von buildFeatures
  * @param ctx { contactsByName: Map<key,Set<addr>>, contactAddresses:Set, contactDomains:Set,
  *              historyByName: Map<key,Map<addr,count>>, history:(addr)=>{count}|null,
- *              threadFound: boolean|undefined, ownDomains?:string[] }
+ *              threadFound: boolean|undefined, ownDomains?:string[],
+ *              related?: {anchor, date} (lib/anchors.js), ai?: Fakten aus lib/ai.js }
  */
 export function analyze(features, ctx = {}, userConfig = {}) {
   const cfg = mergeConfig(userConfig);
@@ -287,11 +305,24 @@ export function analyze(features, ctx = {}, userConfig = {}) {
   // Gleicher Firmenname unter anderer Endung (enjoy.eset.com → eset.de) zählt als dieselbe Firma – aber nur, wenn
   // der Absender per DKIM bestätigt oder bekannt ist; sonst könnte ein Betrüger einfach paypal.<neue-endung> eintragen.
   const sameOrg = (rd) => (dkimAligned || known) && rd && mainLabel(rd).length >= 3 && mainLabel(rd) === mainLabel(fromRd);
-  const foreignReply = f.replyTo.find((r) => { const rd = addressDomain(r); return rd !== fromRd && !sameOrg(rd) && !(f.recipients ?? []).includes(r.address); });
-  if (foreignReply && !trustedList) add('replyToForeign', [foreignReply.address]);
+  // PayPal u. a. tragen die Empfängeradresse abgeschnitten ein ("max.mustermann@firma-beispiel...."): als Empfänger werten
+  const isRecipient = (addr) => (f.recipients ?? []).some((x) => {
+    if (x === addr) return true;
+    const cut = addr.replace(/\.{2,}>?$/, '');
+    return /\.{2,}>?$/.test(addr) && cut.includes('@') && cut.length >= 8 && x.startsWith(cut);
+  });
+  const foreignReply = f.replyTo.find((r) => { const rd = addressDomain(r); return rd !== fromRd && !sameOrg(rd) && !isRecipient(r.address); });
+  if (foreignReply && !trustedList) {
+    // DKIM-bestätigter Absender mit Antwortadresse auf einem unauffälligen Dienst (Zahlungsabwickler → Helpdesk des
+    // Händlers): bewusste Wahl einer echten Firma, nur ein schwacher Hinweis. Freemail/Zufallsdomain bleiben stark (BEC).
+    const rtRd = addressDomain(foreignReply);
+    const benign = dkimAligned && !FREEMAIL.has(rtRd) && !looksRandomDomain(rtRd) && !badTld(rtRd) &&
+      !lookalike(rtRd, [fromRd]);
+    add(benign ? 'replyToForeignAuthed' : 'replyToForeign', [foreignReply.address]);
+  }
 
   // --- Links ---
-  let imageBrand = null, imageCtaWord = null, qrLink = null, imageLink = null, mismatch = null, ipLink = null, shortener = null, userinfo = null, redirect = null, abused = null;
+  let imageBrand = null, imageCtaWord = null, qrLink = null, calLink = null, imageLink = null, mismatch = null, ipLink = null, shortener = null, userinfo = null, redirect = null, abused = null;
   const linkHosts = new Set();
   const imgForeign = [], textLinkRds = new Set();
   for (const l of f.links) {
@@ -318,6 +349,8 @@ export function analyze(features, ctx = {}, userConfig = {}) {
       if (rd !== fromRd) imageCtaWord = IMAGE_CTA.find((w) => compact(ocrText).includes(w)) ?? imageCtaWord;
     }
     if (!qrLink && l.qr && rd !== fromRd && !brandDomains.includes(rd)) qrLink = [h.host];
+    // Kalender-Einladung mit Link auf eine fremde Domain (Besprechungsdienste sind normal)
+    if (!calLink && l.ics && rd !== fromRd && !sameOrg(rd) && !MEETING_HOSTS.has(rd) && !brandDomains.includes(rd)) calLink = [h.host];
     // Großes, textloses Bild als Link auf eine fremde Domain (typisch: Screenshot einer "Datei-Freigabe")
     if (l.hasImage && !l.text && rd !== fromRd) imgForeign.push({ rd, small: /(?:^|\D)(\d{1,2}|[1-5]\d|6[0-4])x(\d{1,2}|[1-5]\d|6[0-4])(?:\D|$)/.test(l.imgSrc ?? '') });
     if (l.text && rd !== fromRd) textLinkRds.add(rd);
@@ -339,6 +372,7 @@ export function analyze(features, ctx = {}, userConfig = {}) {
   if (imageLink && ((footerIcons >= 3 && dkimAligned) || textLinkRds.has(imageLink[1]))) imageLink = null;
   if (imageLink) add('imageLinkForeign', [imageLink[0]]);
   if (qrLink) add('qrForeignLink', qrLink);
+  if (calLink && !known) add('calendarForeignLink', calLink);
   if (imageBrand) add('imageBrandMismatch', imageBrand);
   if (imageCtaWord && (imageLink || imageBrand)) add('imageCta', [imageCtaWord]);
   if (userinfo) add('urlUserinfo', userinfo);
@@ -360,6 +394,8 @@ export function analyze(features, ctx = {}, userConfig = {}) {
   else if (f.bodyLoginForm) add('loginForm', ['']);
   const risky = f.attachments.find((a) => RISKY_EXT.has(a.ext));
   if (risky) add('riskyAttachment', [risky.name]);
+  const obfuscated = f.attachments.find((a) => a.obfuscated);
+  if (obfuscated) add('obfuscatedHtml', [obfuscated.name]);
   // Getarnt: Doppel-Endung/Schreibrichtungs-Trick im Namen, oder der Inhalt ist etwas anderes als die Endung sagt
   const disguised = f.attachments.find((a) => a.disguised || a.typeMismatch || a.archive?.disguisedEntry);
   if (disguised) add('disguisedFile', [disguised.archive?.disguisedEntry ? disguised.archive.riskyEntry : disguised.name]);
@@ -385,14 +421,20 @@ export function analyze(features, ctx = {}, userConfig = {}) {
   }
 
   // --- Anlage-/Krypto-Werbung (auch aus Bildtext/OCR) von unbekannten Absendern ---
-  if (!known && !isContact) {
+  // Abonnierte Börsen-/Finanz-Newsletter (Liste + DKIM zur Absender-Domain) zählen nur, wenn die Absenderzeile
+  // selbst auffällig ist – Krypto-Spam kommt von Zufalls-/Billigdomains, Stocktwits & Co. nicht.
+  const senderShady = signals.some((s) => HEADER_SIGNALS.includes(s.id) || s.id === 'badTld');
+  if (!known && !isContact && (!trustedList || senderShady)) {
     const pitch = normalizeText(`${f.subject} ${f.text} ${Object.values(f.imageTexts ?? {}).join(' ')}`);
     const terms = INVEST_TERMS.filter((t) => pitch.includes(t));
     if (terms.length >= 2 && INVEST_HOOKS.some((h) => pitch.includes(h))) add('investmentPromo', [terms.slice(0, 3).join(', ')]);
   }
 
   // --- Inhalt: Erpressung ("Sextortion") und Füllwort-Trick ---
-  if (detectExtortion(f.text, { isList: trustedList })) add('extortion');
+  // Erpressungstext auch im Bild erkennen (OCR): fast reine Bild-Mails umgehen sonst die Textprüfung
+  const ocrText = Object.values(f.imageTexts ?? {}).join('\n');
+  if (detectExtortion(f.text, { isList: trustedList }) ||
+      (ocrText.length >= 80 && detectExtortion(`${f.text}\n${ocrText}`, { isList: trustedList }))) add('extortion');
   if (f.fillerToken) add('fillerText', [f.fillerToken]);
   if (f.invisibleCount >= 40) add('invisiblePadding', [f.invisibleCount]);   // schwach: Preheader-Padding nutzen auch legitime Newsletter
 
@@ -406,6 +448,17 @@ export function analyze(features, ctx = {}, userConfig = {}) {
   if (f.imageOnly) add('imageOnly');
   if (f.hiddenText) add('hiddenText');
 
+  // --- Lokale KI über NovaBird (lib/ai.js): nur Fakten, kann nur Signale hinzufügen ---
+  const ai = ctx.ai;
+  if (ai?.injection) add('aiInjection');
+  // Gibt sich die Mail als Organisation aus, die nicht zur Absender-Domain passt, und will etwas (Login, Zahlung,
+  // Anruf …) oder macht Druck? Erkennt auch Marken, die in keiner Liste stehen. Nicht doppelt zu den Namensregeln.
+  const actionAsked = ai && (['login', 'payment', 'download', 'call'].includes(ai.asksFor) || ai.urgency);
+  const nameRuleHit = signals.some((s) => ['brandNameMismatch', 'bankNameMismatch', 'orgNameMismatch', 'learnedNameMismatch', 'brandInContent', 'contactImpersonation'].includes(s.id));
+  if (actionAsked && !known && histLevel !== 'recurring' && !nameRuleHit && !claimFits(ai, fromRd)) {
+    add('aiClaimMismatch', [(ai.claimedOrg ?? ai.claimedDomain).slice(0, 60), fromRd]);
+  }
+
   // --- Erstkontakt und Kombination ---
   if (!known && !hist && !isContact) {
     add('firstContact');
@@ -417,13 +470,21 @@ export function analyze(features, ctx = {}, userConfig = {}) {
   // --- Ausnahmen: vom Nutzer als vertrauenswürdig markierte Absender ---
   const keep = new Set(['dmarcFail', 'spfFail', 'lookalikeDomain', 'mixedScript']);
   let list = signals;
+  // Bezug zu einer früheren, vertrauenswürdigen Mail (gleiche Bestell-/Sendungsnummer): nimmt nur die Hinweise weg,
+  // die echte Händler und Paketdienste beim ersten Kontakt treffen. Fälschungshinweise bleiben immer.
+  if (ctx.related) list = list.filter((s) => !RELATED_DROPS.includes(s.id));
   // Die Absender-Domain selbst hat der Nutzer bestätigt; Lookalike-Links in der Mail bleiben sichtbar.
   if (cfg.trustedSenders.includes(from.address)) {
     list = signals.filter((s) => keep.has(s.id) && !(s.id === 'lookalikeDomain' && s.params[2] === 'sender'));
   }
 
-  return result(list, cfg, { known, hist, isContact });
+  return { ...result(list, cfg, { known, hist, isContact }), related: ctx.related ?? null };
 }
+
+// Hinweise, die ein nachgewiesener Bezug (siehe lib/anchors.js) aufhebt
+export const RELATED_DROPS = ['firstContact', 'nameDomainMismatch', 'orgNameMismatch', 'replyToForeignAuthed', 'aiClaimMismatch'];
+/** Lohnt die Suche nach einem Bezug? Nur bei einer Warnung, an der aufhebbare Hinweise beteiligt sind. */
+export const relatedCouldHelp = (verdict) => verdict.level !== 'normal' && verdict.signals.some((s) => RELATED_DROPS.includes(s.id));
 
 // Signale, die sich allein aus der Absenderzeile ergeben (für den Erstscan, der Mails nicht ganz lesen soll)
 export const HEADER_SIGNALS = ['brandNameMismatch', 'bankNameMismatch', 'orgNameMismatch', 'lookalikeDomain', 'randomDomain', 'displayNameEmail', 'mixedScript'];
@@ -441,7 +502,7 @@ function result(signals, cfg, sender = {}) {
   // Bekannte Absender: Bonus, außer bei Hinweisen auf Fälschung oder Übernahme.
   // Fälschung (DMARC, Lookalike) oder Kontoübernahme (fremde Bild-/Hosting-Links, Formulare, riskante Anhänge)
   const spoofy = signals.some((s) => ['learnedNameMismatch', 'dmarcFail', 'spfFail', 'lookalikeDomain', 'replyToForeign', 'mixedScript',
-    'imageLinkForeign', 'qrForeignLink', 'extortion', 'imageBrandMismatch', 'abusedHost', 'linkMismatch', 'loginForm', 'riskyAttachment', 'disguisedFile', 'archiveRisky'].includes(s.id));
+    'imageLinkForeign', 'qrForeignLink', 'extortion', 'imageBrandMismatch', 'abusedHost', 'linkMismatch', 'loginForm', 'riskyAttachment', 'disguisedFile', 'archiveRisky', 'obfuscatedHtml', 'aiInjection'].includes(s.id));
   if (sender.known && !spoofy) score += cfg.knownSenderBonus;
 
   // Nur schwache Signale: nie eine Warnung.

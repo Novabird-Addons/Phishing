@@ -26,6 +26,8 @@ The banner shows the two most important reasons right away. **“Why?”** lists
 - **Extortion emails** (“I hacked your camera … pay in Bitcoin”) and **crypto investment lures**.
 - **Dangerous attachments** – programs and scripts, also **inside ZIP files**; files that only pretend to be harmless (`invoice.pdf.exe`, a “PDF” that is really a program).
 - **Typical forger traces** – legal notice and privacy links that lead nowhere, random-looking sender domains, domain endings popular with spammers (`.xyz`, `.top` … – only ever as an extra hint).
+- **Reference to earlier emails** – if a new sender (say, a parcel service) quotes an order or tracking number from an earlier genuine email, the “new sender” hint is dropped.
+- **Optionally with a local AI** – if the [NovaBird](https://github.com/Novabird-Addons) extension is set up with a model on your own computer or network, the add-on also recognises who an email pretends to be and hidden instructions to AI assistants. The AI can only strengthen warnings, never lift them; cloud services are never asked.
 
 ## What’s better than Thunderbird’s built-in check?
 

@@ -8,8 +8,9 @@ export const DEFAULT_CONFIG = {
     brandNameMismatch: 40, lookalikeDomain: 40, mixedScript: 30,
     displayNameEmail: 25, linkMismatch: 35, loginForm: 45,
     riskyAttachment: 35, passwordArchive: 20, disguisedFile: 60, archiveRisky: 35, badTld: 8,
+    obfuscatedHtml: 45, calendarForeignLink: 25, aiClaimMismatch: 25, aiInjection: 35,
     firstContact: 10, firstContactClaims: 15,
-    replyToForeign: 20, ipLink: 20, shortener: 15, urlUserinfo: 30,
+    replyToForeign: 20, replyToForeignAuthed: 8, ipLink: 20, shortener: 15, urlUserinfo: 30,
     brandInContent: 25, abusedHost: 15, imageLinkForeign: 30, qrForeignLink: 25, imageBrandMismatch: 45, imageCta: 10, extortion: 70, fillerText: 20, invisiblePadding: 8, randomDomain: 20, investmentPromo: 25, redirectParam: 10, placeholderLinks: 20, orgNameMismatch: 20, learnedNameMismatch: 30, bankNameMismatch: 25, nameDomainMismatch: 10, pressureWords: 8, imageOnly: 8, hiddenText: 6,
   },
   // Signale mit Mindeststufe: allein ausreichend für "verdächtig".
@@ -22,7 +23,7 @@ export const DEFAULT_CONFIG = {
     archiveRisky: 'suspicious',  // Programm/Skript im ZIP: immer ansehen; rot erst zusammen mit weiteren Hinweisen
   },
   // Signalklassen; reine "weak"-Treffer können nie warnen.
-  weak: ['firstContact', 'nameDomainMismatch', 'pressureWords', 'imageOnly', 'hiddenText', 'shortener', 'redirectParam', 'invisiblePadding', 'badTld'],
+  weak: ['firstContact', 'nameDomainMismatch', 'pressureWords', 'imageOnly', 'hiddenText', 'shortener', 'redirectParam', 'invisiblePadding', 'badTld', 'replyToForeignAuthed'],
   knownSenderBonus: -15,
   trustedAuthservIds: [],
   ownDomains: [],
@@ -36,6 +37,8 @@ export const DEFAULT_CONFIG = {
   // Nachgeladene Fremdbilder prüfen: holt jedes Bild ein zweites Mal (nur mit Zustimmung + Host-Berechtigung).
   scanRemoteImages: false,
   trustedSenders: [],
+  // Lokale KI der NovaBird-Extension mitnutzen, falls installiert und dort eingeschaltet (nur lokale Modelle).
+  useNovaBirdAi: true,
   // Ordner, die nicht in die Absenderhistorie zählen (Schlüssel "<konto>:<pfad>", z. B. eine Spam-Sammlung).
   historyExcludedFolders: [],
   // Rückblick des Erstscans in Monaten (1–18). Ältere Mails sagen wenig darüber, wer heute schreibt.

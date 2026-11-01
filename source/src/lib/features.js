@@ -2,7 +2,7 @@ import {
   firstHeader, normalizeHeaders, parseAddressList, parseAuthResults, parseMessageIds,
 } from './headers.js';
 import {
-  extractLinks, extractTextLinks, hasHiddenText, hasImage, hasPasswordInput, stripTags,
+  extractLinks, extractTextLinks, hasHiddenText, hasImage, hasObfuscatedScript, hasPasswordInput, stripTags,
 } from './html.js';
 import { ARCHIVE_EXT, disguisedName, fileExt, inspectArchive, typeMismatch } from './files.js';
 
@@ -21,6 +21,12 @@ export function detectFiller(text) {
   for (const [t, n] of counts) if (!top || n > top.n) top = { t, n };
   if (top.n >= 20 && top.n / tokens.length >= 0.25 && top.t.length >= 2 && /[\p{L}\p{N}]/u.test(top.t)) return top;
   return null;
+}
+
+/** URLs aus einer Kalender-Datei (iCalendar): erst die umbrochenen Zeilen zusammenfügen. */
+function calendarUrls(body) {
+  const unfolded = String(body).replace(/\r?\n[ \t]/g, '');
+  return (unfolded.match(/https?:\/\/[^\s"<>\\]+/gi) ?? []).slice(0, 20);
 }
 
 const INVISIBLE = /[\u200b-\u200f\u2060\ufeff\u034f\u00ad\u2800\u180e\u3164]/g;
@@ -42,7 +48,7 @@ export function buildFeatures({ headers, parts = [], qrUrls = [], imageTexts = {
   const references = parseMessageIds(firstHeader(h, 'references'));
 
   let textPlain = '', html = '';
-  const attachments = [];
+  const attachments = [], icsUrls = [];
   for (const p of parts) {
     const ct = (p.contentType || '').toLowerCase();
     const isAttachment = !!p.name && !(ct.startsWith('text/') && !fileExt(p.name));
@@ -56,8 +62,11 @@ export function buildFeatures({ headers, parts = [], qrUrls = [], imageTexts = {
         typeMismatch: typeMismatch(p.name, scan?.realType),
         archive: scan?.archive ? inspectArchive(scan.archive.entries) : null,
         loginForm: /html|svg/.test(ext + ct) && hasPasswordInput(p.body || ''),
+        obfuscated: /html|svg/.test(ext + ct) && hasObfuscatedScript(p.body || ''),
       });
-    } else if (ct === 'text/html') html += (p.body || '') + '\n';
+      if (ct.includes('text/calendar') || ext === 'ics') icsUrls.push(...calendarUrls(p.body || ''));
+    } else if (ct.includes('text/calendar')) icsUrls.push(...calendarUrls(p.body || ''));
+    else if (ct === 'text/html') html += (p.body || '') + '\n';
     else if (ct === 'text/plain') textPlain += (p.body || '') + '\n';
   }
 
@@ -66,6 +75,8 @@ export function buildFeatures({ headers, parts = [], qrUrls = [], imageTexts = {
     ...(!html && textPlain ? extractTextLinks(textPlain) : []),
     // Adressen aus QR-Codes in Bildern: wie Links prüfen, aber als solche kennzeichnen
     ...qrUrls.map((href) => ({ href, text: '', hasImage: false, imgWidth: 0, imgHeight: 0, imgSrc: '', qr: true })),
+    // Links aus Kalender-Einladungen: laufen durch alle Link-Prüfungen und zusätzlich durch die Kalender-Prüfung
+    ...[...new Set(icsUrls)].map((href) => ({ href, text: '', hasImage: false, imgWidth: 0, imgHeight: 0, imgSrc: '', ics: true })),
   ];
   let text = (html ? stripTags(html) : textPlain).slice(0, 20_000);
   // Unsichtbare Füllzeichen (Zero-Width, weiche Trennstriche …): zählen und entfernen. Spam streut sie in Mengen ein.

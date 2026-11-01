@@ -3,6 +3,7 @@ import { OCR_MODELS } from '../src/data/ocr-languages.js';
 import { HISTORY_MONTHS_DEFAULT, historyMonths, isSkippedFolder } from '../src/lib/history.js';
 import { isCollectedBook, trustedBookIds } from '../src/lib/contacts.js';
 import { t } from '../src/i18n.js';
+import { NOVABIRD_ID } from '../src/lib/ai.js';
 
 const $ = (id) => document.getElementById(id);
 const lines = (s) => s.split('\n').map((x) => x.trim().toLowerCase()).filter(Boolean);
@@ -19,6 +20,43 @@ const mb = (bytes) => (bytes / 1e6).toFixed(1).replace('.', uiLang.startsWith('d
 document.documentElement.lang = uiLang;
 for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = tr(el.dataset.i18n);
 for (const el of document.querySelectorAll('[data-i18n-html]')) el.innerHTML = tr(el.dataset.i18nHtml);
+
+// Mit NovaBird-Extension stehen die Einstellungen unter Einstellungen → NovaBird (volle Breite, ?hub=1). In der schmalen
+// Add-on-Verwaltung steht dann nur ein Verweis dorthin; "Hier anzeigen" zeigt die Seite trotzdem. Ohne NovaBird: wie bisher.
+const askNovaBird = (msg, ms = 2500) => Promise.race([
+  messenger.runtime.sendMessage(NOVABIRD_ID, msg),
+  new Promise((resolve) => setTimeout(() => resolve(undefined), ms)),
+]);
+if (new URLSearchParams(location.search).has('hub')) document.documentElement.classList.add('hub');
+else {
+  askNovaBird({ type: 'openSettings', probe: true }).then((r) => {
+    if (r?.ok !== true) return;
+    const show = () => { document.documentElement.classList.remove('addons'); $('hubNote').hidden = true; };
+    $('hubOpen').addEventListener('click', () => askNovaBird({ type: 'openSettings' }).then((x) => { if (x?.ok !== true) show(); }, show));
+    $('hubHere').addEventListener('click', (e) => { e.preventDefault(); show(); });
+    $('hubNote').hidden = false;
+    document.documentElement.classList.add('addons');
+  }).catch(() => {});
+}
+
+/** Status der lokalen KI über NovaBird: grau (aus/fehlt), gelb (unvollständig eingerichtet), grün (bereit). */
+async function showAiStatus() {
+  const set = (kind, title, text = '') => {
+    $('aiStatus').className = 'status ' + kind;
+    $('aiStatusTitle').textContent = tr(title);
+    $('aiStatusText').textContent = text;
+  };
+  if (!$('useAi').checked) return set('', 'opt_ai_st_off', tr('opt_ai_st_off_text'));
+  set('', 'opt_ai_st_checking');
+  let r;
+  try { r = await askNovaBird({ type: 'aiAvailable', feature: 'phish' }); } catch { return set('', 'opt_ai_st_missing', tr('opt_ai_st_missing_text')); }
+  if (!r || typeof r !== 'object') return set('', 'opt_ai_st_noanswer', tr('opt_ai_st_noanswer_text'));
+  if (r.local === false) return set('warn', 'opt_ai_st_cloud', tr('opt_ai_st_cloud_text'));
+  if (!r.available) return set('warn', 'opt_ai_st_disabled', tr('opt_ai_st_disabled_text'));
+  if (r.reachable === false) return set('warn', 'opt_ai_st_unreachable', tr('opt_ai_st_unreachable_text'));
+  const model = typeof r.model === 'string' && r.model ? tr('opt_ai_st_model', r.model.slice(0, 60)) : '';
+  set('ok', r.reachable === true ? 'opt_ai_st_ok' : 'opt_ai_st_ready', model || tr('opt_ai_st_ready_text'));
+}
 
 (async () => {
   const { config = {} } = await messenger.storage.local.get('config');
@@ -103,6 +141,9 @@ for (const el of document.querySelectorAll('[data-i18n-html]')) el.innerHTML = t
 
   $('mode').value = config.mode ?? 'active';
   $('ocr').checked = config.ocr ?? true;
+  $('useAi').checked = config.useNovaBirdAi ?? true;
+  $('useAi').addEventListener('change', showAiStatus);
+  showAiStatus();
   $('scanRemote').checked = !!config.scanRemoteImages && await messenger.permissions.contains({ origins: ['<all_urls>'] });
   const books = await messenger.addressBooks.list();
   const defaultBooks = trustedBookIds(books, null);
@@ -145,6 +186,7 @@ for (const el of document.querySelectorAll('[data-i18n-html]')) el.innerHTML = t
         ocr: $('ocr').checked,
         ocrLanguages: selected.size ? [...selected] : ['deu', 'eng'],
         scanRemoteImages: $('scanRemote').checked,
+        useNovaBirdAi: $('useAi').checked,
         // Auswahl wie der Standard (alle außer "Gesammelte Adressen") -> null, damit neue Bücher automatisch mitzählen
         contactBookIds: (() => {
           const ids = [...$('books').querySelectorAll('input')].filter((b) => b.checked).map((b) => b.value).sort();

@@ -1,5 +1,45 @@
 # Änderungen
 
+## 0.9.0 – Bezug zu früheren Mails, lokale KI über NovaBird, weniger Fehlalarme (2026-11-01)
+
+Fasst die nicht veröffentlichten Zwischenstände 0.6.1 zusammen.
+
+### Lokale KI über die NovaBird-Extension (optional)
+
+- Ist die **NovaBird-Extension** installiert und dort die **Phishing-Prüfung** eingeschaltet, fragt der Phishing-Schutz deren KI. Das Modell liefert nur Fakten: als wer sich die Mail ausgibt, was sie verlangt (Anmelden, Zahlen, Herunterladen, Anrufen) und ob sie Druck macht. Die Bewertung treffen weiter die Regeln.
+- Neu: **„Tritt als Organisation auf, die nicht zur Absender-Domain passt“** – wenn die Mail zugleich etwas verlangt oder drängt. Erkennt auch Marken, die in keiner Liste stehen, und Telefonbetrug („Microsoft-Sicherheitszentrum, rufen Sie an“).
+- Neu: **Versteckte Anweisungen an KI-Assistenten** in der Mail („ignoriere alle Anweisungen …“) werden gemeldet, auch bei bekannten Absendern.
+- Die KI kann **nur verschärfen, nie entwarnen** – eingeschleuste Texte wie „diese Mail ist sicher“ bewirken nichts.
+- **Keine Cloud:** NovaBird nutzt dafür nur ein Modell im eigenen Rechner oder Netz (Ollama, NovaBird Helper). Ist dort ein Cloud-Dienst eingestellt, bleibt die Prüfung aus.
+- Ohne NovaBird läuft alles wie bisher. Abschaltbar in den Einstellungen („Lokale KI der NovaBird-Extension mitnutzen“).
+- Kommt das KI-Ergebnis später (Modell noch nicht geladen), wird das Banner nachträglich ergänzt.
+- Schnittstelle: `docs/ki-schnittstelle.md`.
+
+### Einstellungen
+
+- **Neu gegliedert** in Abschnitte (Schutz · Lokale KI · Bilder und Texterkennung · Absender und Verlauf · Vertrauen und Ausnahmen), passend zu hellem und dunklem Thema.
+- **Status der lokalen KI** mit farbigem Punkt: grün „Verbunden“ bzw. „Eingerichtet (lokal)“ mit Modellname; gelb, wenn in NovaBird die Phishing-Prüfung aus ist, ein Cloud-Dienst eingestellt ist oder das Modell nicht antwortet; grau ohne NovaBird.
+- Mit der NovaBird-Extension erscheinen die Einstellungen unter **Einstellungen → NovaBird** als eigener Reiter „Phishing-Schutz“; in der Add-on-Verwaltung steht dann ein Verweis dorthin („Hier anzeigen“ zeigt sie trotzdem). Ohne NovaBird bleibt alles wie bisher.
+- Eigenes Add-on-Symbol (Schild).
+
+### Bezug zu früheren Mails
+
+- Neu: **Bezug über Bestell-, Sendungs- und Rechnungsnummern.** Schreibt ein neuer Absender (z. B. ein Paketdienst) und nennt eine Nummer, die schon in einer früheren, vertrauenswürdigen Mail stand, zählen die Hinweise „Neuer Absender“ und „Name passt nicht zur Domain“ nicht mehr. Als vertrauenswürdig gilt eine selbst verschickte Mail, eine von Kontakten oder etablierten Absendern oder eine per DKIM bestätigte Mail einer anderen Firma, die mindestens 12 Stunden älter ist. Fälschungshinweise (DMARC, nachgemachte Domain, Link-Täuschung, getarnte Anhänge) bleiben immer. Gesucht wird nur, wenn sonst gewarnt würde: im Betreff aller Konten, im Text nur bei lokalen Konten (keine Abrufe vom Server).
+
+### Neue Erkennungen
+
+- Neu: **Verschleierter Programmcode in HTML-Anhängen** (Dekodier-Funktionen wie `atob`, lange kodierte Ketten, kaum sichtbarer Text) wird rot gemeldet – typisch für gefälschte Login-Seiten als „Rechnung.html“. Gespeicherte echte Webseiten mit viel Text bleiben außen vor.
+- Neu: **Kalender-Einladungen (.ics)** werden geprüft. Links darin laufen durch alle Link-Prüfungen; ein Link auf eine Domain ohne Bezug zum Absender wird gemeldet. Besprechungsdienste (Zoom, Teams, Webex, Calendly …) sind ausgenommen.
+- Neu: **Erpressungstext in Bildern** wird erkannt – die Texterkennung lief schon, jetzt läuft auch die Erpressungs-Prüfung über den Bildtext.
+
+### Weniger leichte Warnungen bei echten Mails
+
+Aus vier echten Mails, die fälschlich „Vorsicht“ bekamen (PayPal-Beleg, HomeByMe-Abo über FastSpring, DRG-Newsletter, Stocktwits):
+
+- Trägt der Absender die **Empfängeradresse abgeschnitten** als Antwortadresse ein (PayPal: `name@domain....`), zählt das nicht mehr als fremde Antwortadresse.
+- **Antwortadresse auf fremder Domain** ist nur noch ein schwacher Hinweis, wenn der Absender per DKIM bestätigt ist und die Antwortadresse unauffällig ist (Zahlungsabwickler → Helpdesk des Händlers). Antworten an Freemail-Adressen (typisch für Chef-Betrug) oder Zufallsdomains bleiben ein starkes Signal.
+- **Anlage-/Krypto-Werbung** in abonnierten Newslettern (Abmelde-Header und DKIM zur Absender-Domain, unauffällige Absenderzeile) wird nicht mehr gemeldet – Börsendienste wie Stocktwits schreiben ständig über Trading. Von Zufalls- oder Billigdomains wird weiter gewarnt.
+
 ## 0.6.0 – Anhänge genauer prüfen (2026-10-17)
 
 Auf Anregung aus einer Nutzer-Rückmeldung.

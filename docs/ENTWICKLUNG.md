@@ -306,6 +306,58 @@ Logik in `source/src/lib/files.js` (rein, getestet in `tests/files.test.js`), By
   „Dokument“ → `dokumente-portal…` durch. Link-Extraktion liefert dafür `imgAlt`.
 - Offen: Regressionstest gegen `testdata/legitset` und `phishingset` (`npm run check`) – lag beim Bau unter Windows nicht vor.
 
+## v0.9.0: Bezug über Anker und lokale KI über NovaBird
+
+Grundsatz (abgestimmt mit dem NovaBird-Thread, Vertrag in [ki-schnittstelle.md](ki-schnittstelle.md)): **Die KI darf
+verschärfen, nie entwarnen.** Entwarnen darf nur, was ein Angreifer nicht kennen kann.
+
+- **Bezug über Anker** (`lib/anchors.js`, `findRelated()` in `background.js`): Bestell-/Sendungs-/Rechnungs-/Vorgangs-/
+  Kundennummern aus Betreff und Text (bezeichnet, plus UPS `1Z…`, DHL `00340…`/`JJD…`). Nur wenn `relatedCouldHelp()`
+  (Warnung, an der `RELATED_DROPS` beteiligt sind): `messages.query` nach `subject` in allen Konten, `body` nur in lokalen
+  Konten, 180 Tage zurück. Die frühere Mail zählt bei Gesendet-Ordner, Kontakt/etabliertem Absender oder DKIM einer
+  *anderen* Domain + ≥ 12 h älter + unauffälliger Absenderzeile; nie Spam oder mit eigenem Warn-Tag. Ein Phisher
+  bräuchte sonst nur eine eigene „Bestellbestätigung“ vorauszuschicken. Entfernt: `firstContact`,
+  `nameDomainMismatch`, `orgNameMismatch`, `replyToForeignAuthed`, `aiClaimMismatch`. Fälschungssignale bleiben.
+- **KI** (`lib/ai.js`, `askNovaBird()`): `phish:extract` an `novabird-extension@novabird`, Zeitlimit 3,5 s, nur bei
+  nicht roten Mails mit mindestens einem Hinweis. `parseAiFacts()` übernimmt nur bekannte Felder (Whitelist, Länge,
+  Hostname, echtes bool). Signale: `aiInjection` (35, stark, Fälschungs-Signal, also kein Bonus für Bekannte) und
+  `aiClaimMismatch` (25): Organisation/Website passt nicht zur Absender-Domain (`claimFits()`: Domain, Hauptlabel,
+  `nameMatchesDomain`, Kürzel, Marke mit eigener Domain) **und** die Mail verlangt Login/Zahlung/Download/Anruf oder macht
+  Druck; nicht bei bekannten/„oft empfangenen“ Absendern und nicht zusätzlich zu den Namensregeln. Ohne die Bedingung
+  „verlangt etwas“ träfe es Newsletter über fremde Versanddienste (Lieferando von `takeaway.com`).
+- Nach `busy` schickt die Extension `phish:result`; `onMessageExternal` (nur deren ID, nicht async) speichert, bewertet
+  neu, setzt das Tag und ersetzt ein offenes Banner (`verdictUpdate` an `banner.js`).
+- Einstellung `useNovaBirdAi` (Standard an; wirkt erst, wenn in NovaBird die opt-in-„Phishing-Prüfung“ an ist).
+
+## v0.9.0 (vorher 0.6.1): drei neue Erkennungen
+
+- **`obfuscatedHtml` (45, Fälschungs-Signal):** HTML-/SVG-Anhang, dessen Skript dekodiert (`atob`, `unescape`,
+  `String.fromCharCode`) oder lange Base64-/Hex-Ketten enthält, während die Seite < 600 Zeichen sichtbaren Text hat
+  (`hasObfuscatedScript` in `html.js`). Zusammen mit `riskyAttachment` (HTML-Endung) ergibt das rot, auch von bekannten
+  Absendern. Gespeicherte echte Webseiten (viel Text) sind ausgenommen.
+- **`calendarForeignLink` (25):** URLs aus `text/calendar`-Teilen und `.ics`-Anhängen (Zeilen erst entfaltet) laufen als
+  normale Links mit (Verkürzer, IP, Hosting-Dienste …); zusätzlich meldet das Signal Links auf fremde Domains –
+  außer Besprechungsdienste (`MEETING_HOSTS`), gleiche Firma (`sameOrg`), Marken-Domains und bekannte Absender.
+- **Erpressung im Bild:** `detectExtortion` läuft zusätzlich über den OCR-Text aller Bilder (ab 80 Zeichen),
+  zusammen mit dem Mailtext. Damit ist der offene Punkt „Erpressungstext in Bildern“ umgesetzt.
+
+## v0.9.0 (vorher 0.6.1): leichte Warnungen bei echten Mails reduziert
+
+Vier echte Mails standen auf „verdächtig“ (36–41 Punkte). Befund und Abhilfe (`tests/analyzer.test.js`):
+
+- **PayPal-Beleg:** `Reply-To: max.mustermann@firma-beispiel....` – PayPal trägt die Empfängeradresse *abgeschnitten* ein, der
+  Abgleich „Reply-To = Empfänger“ scheiterte. Jetzt gilt eine Adresse mit `..`-Ende, deren Anfang (mit `@`, ≥ 8 Zeichen)
+  ein Empfänger-Präfix ist, als Empfänger.
+- **Händler über Zahlungsabwickler** (HomeByMe: From `fastspring.com`, Reply-To `homebyme.zendesk.com`): neues schwaches
+  Signal `replyToForeignAuthed` (8) statt `replyToForeign` (20), wenn DKIM zur Absender-Domain passt und die
+  Antwort-Domain weder Freemail noch Zufallsdomain, Billig-TLD oder Lookalike der Absender-Domain ist. Freemail-Reply-To
+  bleibt stark – das ist das BEC-Muster (gekapertes Firmenkonto, Antworten an gmail).
+- **Finanz-Newsletter** (Stocktwits): `investmentPromo` entfällt bei `trustedList` (Listen-Header + DKIM zur
+  Absender-Domain), sofern die Absenderzeile selbst unauffällig ist (keine `HEADER_SIGNALS`, kein `badTld`) – Krypto-Spam
+  kommt von Zufalls-/Billigdomains, die weiter melden.
+- Die Signatur-Links auf LinkedIn/Instagram/Facebook/YouTube (DRG-Mail) waren schon vorher ausgenommen (`SOCIAL`);
+  die Mail blieb mit `nameDomainMismatch`+`firstContact` (20) unter der Schwelle.
+
 ## Build und Namen
 
 `./build-xpi.sh` baut `dist/novabird-phishing-<version>.xpi` (ungesigniert) und behält die neueste Version plus die 3 vorherigen.
