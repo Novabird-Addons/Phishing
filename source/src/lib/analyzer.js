@@ -468,7 +468,9 @@ export function analyze(features, ctx = {}, userConfig = {}) {
   }
 
   // --- Ausnahmen: vom Nutzer als vertrauenswürdig markierte Absender ---
-  const keep = new Set(['dmarcFail', 'spfFail', 'lookalikeDomain', 'mixedScript']);
+  // Was auch bei vertrauten Absendern bleibt: Fälschungs- und Kompromittierungshinweise. Ein gekapertes Konto
+  // schickt "Rechnung.pdf.exe" oder Erpressung genauso wie ein Fremder.
+  const keep = new Set(['dmarcFail', 'spfFail', 'dkimFail', 'lookalikeDomain', 'mixedScript', 'disguisedFile', 'extortion']);
   let list = signals;
   // Bezug zu einer früheren, vertrauenswürdigen Mail (gleiche Bestell-/Sendungsnummer): nimmt nur die Hinweise weg,
   // die echte Händler und Paketdienste beim ersten Kontakt treffen. Fälschungshinweise bleiben immer.

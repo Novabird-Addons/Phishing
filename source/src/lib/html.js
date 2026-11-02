@@ -47,12 +47,17 @@ export function imageWidth(tag) {
 }
 
 /** Links aus HTML: [{ href, text }] (href mit decodierten Entities). */
+/** Bei sehr vielen Links Anfang und Ende behalten: Köder stehen sonst hinter harmlosen Füll-Links versteckt. */
+function headAndTail(list) {
+  return list.length > MAX_LINKS ? [...list.slice(0, 150), ...list.slice(-100)] : list;
+}
+
 export function extractLinks(html) {
   html = html.slice(0, MAX_HTML);
   const links = [];
   const re = /<a\b([^>]*)>([\s\S]*?)<\/a\s*>/gi;
   let m;
-  while ((m = re.exec(html)) && links.length < MAX_LINKS) {
+  while ((m = re.exec(html))) {
     const href = m[1].match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
     if (!href) continue;
     const img = m[2].match(/<img\b[^>]*>/i);
@@ -66,7 +71,7 @@ export function extractLinks(html) {
       imgAlt: img ? attr(img[0], 'alt') : '',
     });
   }
-  return links;
+  return headAndTail(links);
 }
 
 /** Verschleierter Programmcode in angehängtem HTML/SVG: Skript baut den Inhalt erst zur Laufzeit auf.
@@ -85,8 +90,7 @@ export function hasObfuscatedScript(html) {
 
 /** URLs aus Klartext. */
 export function extractTextLinks(text) {
-  return [...text.slice(0, MAX_HTML).matchAll(/\bhttps?:\/\/[^\s<>"')\]]+/gi)]
-    .slice(0, MAX_LINKS)
+  return headAndTail([...text.slice(0, MAX_HTML).matchAll(/\bhttps?:\/\/[^\s<>"')\]]+/gi)])
     .map((m) => ({ href: m[0].replace(/[.,;:!?]+$/, ''), text: '', hasImage: false, imgWidth: 0, imgHeight: 0, imgSrc: '' }));
 }
 
