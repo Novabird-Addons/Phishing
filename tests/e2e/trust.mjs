@@ -61,7 +61,10 @@ for (const k of Object.keys(mails)) {
     const tagsBefore = hdr.getStringProperty("keywords");
     const root = el.openOrClosedShadowRoot;
     const btn = (txt) => [...root.querySelectorAll("button")].find((b) => b.textContent === txt);
-    btn("Diesem Absender vertrauen")?.click() ?? btn("Trust this sender")?.click();
+    const trustBtn = btn("Diesem Absender vertrauen") ?? btn("Trust this sender");
+    // "gefährlich": kein Knopf, nur der Hinweis – das Banner bleibt, der Tag bleibt
+    if (!trustBtn) return { banner: true, noButton: true, removed: !el.isConnected, tagsBefore, tagsAfter: hdr.getStringProperty("keywords") };
+    trustBtn.click();
     await wait(300);
     const askVisible = root.querySelector(".box").classList.contains("asking");
     const clicks = [];
@@ -73,7 +76,9 @@ for (const k of Object.keys(mails)) {
     }
     return { banner: true, askVisible, clicks, removed: !el.isConnected, tagsBefore, tagsAfter: hdr.getStringProperty("keywords") };
   `, [`trust-${k}@demo`]);
-  const ok = r.banner && r.askVisible && r.removed && !/phishpilot/.test(r.tagsAfter) && r.clicks.length === (k === 'dang' ? 2 : 1);
+  const ok = k === 'dang'
+    ? r.banner && r.noButton && !r.removed && /phishpilot/.test(r.tagsAfter)
+    : r.banner && r.askVisible && r.removed && !/phishpilot/.test(r.tagsAfter) && r.clicks.length === 1;
   if (!ok) failed++;
   console.log(`${ok ? 'OK    ' : 'FEHLER'} ${k} ${JSON.stringify(r)}`);
 }

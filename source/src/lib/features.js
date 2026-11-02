@@ -78,7 +78,9 @@ export function buildFeatures({ headers, parts = [], qrUrls = [], imageTexts = {
     // Links aus Kalender-Einladungen: laufen durch alle Link-Prüfungen und zusätzlich durch die Kalender-Prüfung
     ...[...new Set(icsUrls)].map((href) => ({ href, text: '', hasImage: false, imgWidth: 0, imgHeight: 0, imgSrc: '', ics: true })),
   ];
-  let text = (html ? stripTags(html) : textPlain).slice(0, 20_000);
+  // Sehr lange Texte: Anfang und Ende prüfen, nicht nur den Anfang – sonst versteckt sich der Köder hinter harmlosem Füllstoff
+  let text = html ? stripTags(html) : textPlain;
+  if (text.length > 20_000) text = text.slice(0, 14_000) + ' ' + text.slice(-6_000);
   // Unsichtbare Füllzeichen (Zero-Width, weiche Trennstriche …): zählen und entfernen. Spam streut sie in Mengen ein.
   const invisible = text.match(INVISIBLE) ?? [];
   if (invisible.length) text = text.replace(INVISIBLE, '');

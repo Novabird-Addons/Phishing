@@ -1,5 +1,18 @@
 # Änderungen
 
+## 0.9.1 – Vertrauen-Liste mit Begründung, Prüffehler sichtbar, lange Mails ganz geprüft (in Arbeit)
+
+### Vertrauen und Ausnahmen
+
+- Die Liste „Vertraute Absender“ in den Einstellungen zeigt je Adresse, seit wann sie vertraut ist, ob der Eintrag über das Banner oder von Hand kam, die damalige Bewertung und die Gründe der Warnung. Jeder Eintrag hat einen „Entfernen“-Knopf; neue Adressen kommen über ein Eingabefeld dazu. Einträge aus früheren Versionen bleiben erhalten, nur ohne Angaben.
+- Bei „gefährlich“ gibt es im Banner keinen Vertrauen-Knopf mehr, sondern den Hinweis, dass die Freigabe nur über die Einstellungen geht. Das Hintergrundskript lehnt einen Vertrauen-Wunsch für solche Mails ebenfalls ab. Die zweistufige Rückfrage entfällt damit; bei „Vorsicht“ bleibt eine Rückfrage.
+- Für vertraute Absender bleiben jetzt auch DKIM-Fehler, getarnte Anhänge („Rechnung.pdf.exe“) und Erpressung sichtbar – ein gekapertes Konto ist kein vertrauter Absender. Bisher blieben nur DMARC, SPF und Lookalike-Domains.
+
+### Robuster gegen Umgehung
+
+- Scheitert die Prüfung einer Mail (nicht lesbar, interner Fehler), zeigt das Banner jetzt grau „Prüfung nicht möglich“ statt gar nichts. Vorher sah ein Fehler aus wie eine unauffällige Mail.
+- Sehr lange Mails werden am Anfang **und** am Ende geprüft: Text über 20.000 Zeichen als 14.000 + letzte 6.000 Zeichen, bei über 250 Links die ersten 150 und letzten 100. Bisher zählte nur der Anfang, hinter harmlosem Füllstoff ließ sich der Köder verstecken.
+
 ## 0.9.0 – Bezug zu früheren Mails, lokale KI über NovaBird, weniger Fehlalarme (2026-11-01)
 
 Fasst die nicht veröffentlichten Zwischenstände 0.6.1 zusammen.

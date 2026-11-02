@@ -160,7 +160,44 @@ async function showAiStatus() {
   $('historyMonths').value = historyMonths(config.historyMonths ?? HISTORY_MONTHS_DEFAULT);
   $('authservIds').value = (config.trustedAuthservIds ?? []).join('\n');
   $('ownDomains').value = (config.ownDomains ?? []).join('\n');
-  $('trusted').value = (config.trustedSenders ?? []).join('\n');
+
+  // Vertraute Absender: Liste mit Datum, damaliger Bewertung und Gründen (trustMeta), je Eintrag "Entfernen";
+  // Änderungen gelten mit "Speichern". Einträge ohne Angaben stammen aus älteren Versionen.
+  const { trustMeta = {} } = await messenger.storage.local.get('trustMeta');
+  const trusted = [...(config.trustedSenders ?? [])];
+  function renderTrusted() {
+    const box = $('trustedList');
+    box.replaceChildren();
+    box.dataset.empty = tr('opt_trusted_empty');
+    for (const addr of trusted) {
+      const m = trustMeta[addr];
+      const entry = Object.assign(document.createElement('div'), { className: 'entry' });
+      const rm = Object.assign(document.createElement('button'), { type: 'button', textContent: tr('opt_remove') });
+      rm.addEventListener('click', () => { trusted.splice(trusted.indexOf(addr), 1); delete trustMeta[addr]; renderTrusted(); });
+      const meta = Object.assign(document.createElement('div'), { className: 'meta' });
+      if (m) {
+        const parts = [tr('opt_trusted_since', new Date(m.date).toLocaleDateString(uiLang)), tr(m.via === 'banner' ? 'opt_trusted_via_banner' : 'opt_trusted_via_settings')];
+        if (Number.isFinite(m.score)) parts.push(tr('opt_trusted_score', m.score, tr('level_' + m.level)));
+        meta.textContent = parts.join(' · ');
+      } else meta.textContent = tr('opt_trusted_nometa');
+      entry.append(Object.assign(document.createElement('b'), { textContent: addr }), rm, meta);
+      if (Array.isArray(m?.reasons) && m.reasons.length) {
+        const ul = document.createElement('ul');
+        for (const r of m.reasons) ul.append(Object.assign(document.createElement('li'), { textContent: String(r) }));
+        entry.append(ul);
+      }
+      box.append(entry);
+    }
+  }
+  renderTrusted();
+  $('trustedAddBtn').addEventListener('click', () => {
+    const addr = $('trustedAdd').value.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)) return;
+    if (!trusted.includes(addr)) { trusted.push(addr); trustMeta[addr] = { date: Date.now(), via: 'settings' }; }
+    $('trustedAdd').value = '';
+    renderTrusted();
+  });
+  $('trustedAdd').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('trustedAddBtn').click(); } });
 
   $('scanRemote').addEventListener('change', async () => {
     // Berechtigung nur beim Einschalten abfragen (muss direkt aus dem Klick heraus geschehen)
@@ -194,10 +231,12 @@ async function showAiStatus() {
         })(),
         trustedAuthservIds: lines($('authservIds').value),
         ownDomains: lines($('ownDomains').value),
-        trustedSenders: lines($('trusted').value),
+        trustedSenders: [...trusted],
         historyExcludedFolders: newExcluded,
         historyMonths: months,
       },
+      // Angaben nur zu Adressen, die noch in der Liste stehen
+      trustMeta: Object.fromEntries(Object.entries(trustMeta).filter(([a]) => trusted.includes(a))),
     });
     if (foldersChanged || monthsChanged) messenger.runtime.sendMessage({ type: 'rescanHistory' }).catch(() => {});
     $('saveStatus').textContent = tr('opt_saved');

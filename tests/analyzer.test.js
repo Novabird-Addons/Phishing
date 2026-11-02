@@ -5,6 +5,7 @@ import { analyze, headerSuspicion, nameMatchesDomain, orgKey } from '../source/s
 import { lookalike, registrableDomain, toUnicodeHost, hasMixedScript, looksRandomDomain } from '../source/src/lib/domains.js';
 import { nameKey } from '../source/src/lib/text.js';
 import { parseAddressList, parseAuthResults } from '../source/src/lib/headers.js';
+import { extractLinks } from '../source/src/lib/html.js';
 import { contactInfo, parseVCard } from '../source/src/lib/contacts.js';
 import { t, uiStrings } from '../source/src/i18n.js';
 import { flagRecord, historyMonths, isEstablished, noteRecord, trustLevel } from '../source/src/lib/history.js';
@@ -165,6 +166,27 @@ test('Als vertrauenswürdig markierter Absender unterdrückt Signale, nicht DMAR
   assert.equal(r.level, 'normal');
   const h2 = { ...h, 'authentication-results': ['mx.me.de; dmarc=fail'] };
   assert.equal(analyze(mk(h2), ctx(), { trustedSenders: ['max.mustermann@gmail.com'] }).signals[0].id, 'dmarcFail');
+  // Auch DKIM-Fehler und getarnte Anhänge bleiben: ein gekapertes Konto ist kein vertrauter Absender
+  const h3 = { ...h, 'authentication-results': ['mx.me.de; dkim=fail'] };
+  assert.equal(analyze(mk(h3), ctx(), { trustedSenders: ['max.mustermann@gmail.com'] }).signals[0].id, 'dkimFail');
+  const f = buildFeatures({ headers: h, parts: [{ contentType: 'application/octet-stream', name: 'Rechnung.pdf.exe', body: '' }] });
+  const r3 = analyze(f, ctx(), { trustedSenders: ['max.mustermann@gmail.com'] });
+  assert.equal(r3.level, 'dangerous');
+  assert.ok(r3.signals.some((s) => s.id === 'disguisedFile'));
+});
+
+test('Lange Mails: Köder am Ende wird trotz Füllstoff davor gesehen', () => {
+  // Text: 30.000 Zeichen harmloser Text, dann die Erpressung – Anfang und Ende werden geprüft
+  const filler = 'Dies ist ein harmloser Satz über das Wetter und den Garten. '.repeat(600);
+  const bait = ' Ich habe deine Kamera gehackt und ein Video von dir. Zahle 500 Euro in Bitcoin an die Wallet bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh innerhalb von 48 Stunden, sonst schicke ich das Video an alle deine Kontakte. Gehe nicht zur Polizei.';
+  const f = buildFeatures({ headers: { from: ['x <x@y.ru>'], subject: ['Hallo'] }, parts: [{ contentType: 'text/plain', body: filler + bait }] });
+  assert.ok(f.text.length <= 20_010 && f.text.includes('Polizei'));
+  assert.equal(analyze(f, ctx()).level, 'dangerous');
+  // Links: hinter 300 harmlosen Links steht der Köder-Link – er bleibt in der Auswahl (Anfang + Ende)
+  const many = '<a href="https://shop.de/p/1">Produkt</a>'.repeat(300) + '<a href="https://evil.ru/login">paypal.com/login</a>';
+  const links = extractLinks(many);
+  assert.equal(links.length, 250);
+  assert.equal(links.at(-1).href, 'https://evil.ru/login');
 });
 
 test('vCard und alte properties werden gleich gelesen', () => {
@@ -415,11 +437,11 @@ test('Phishing von einem Absender, der mehrfach auftaucht, wird weiter gewarnt (
   assert.ok(ids(r).includes('firstContact'));
 });
 
-test('Texte der Sicherheitsabfrage für "Absender vertrauen" gibt es in DE und EN, die Punktzahl bleibt Platzhalter', () => {
+test('Texte für "Absender vertrauen", die Sperre bei "gefährlich" und den Prüffehler gibt es in DE und EN', () => {
   for (const lang of ['de', 'en']) {
     const ui = uiStrings(lang);
-    assert.ok(ui.trust_confirm.length > 20 && ui.trust_confirm_final.length > 20);
-    assert.match(ui.trust_confirm_dangerous, /\{0\}/);
+    for (const k of ['trust_confirm', 'trust_blocked', 'trust_blocked_hint', 'banner_error_title', 'banner_error_text']) assert.ok(ui[k].length > 10, `${lang} ${k}`);
+    assert.ok(!('trust_confirm_dangerous' in ui));   // bei "gefährlich" gibt es keine Rückfrage mehr, sondern keinen Knopf
   }
 });
 

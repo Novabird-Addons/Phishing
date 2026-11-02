@@ -358,6 +358,32 @@ Vier echte Mails standen auf „verdächtig“ (36–41 Punkte). Befund und Abhi
 - Die Signatur-Links auf LinkedIn/Instagram/Facebook/YouTube (DRG-Mail) waren schon vorher ausgenommen (`SOCIAL`);
   die Mail blieb mit `nameDomainMismatch`+`firstContact` (20) unter der Schwelle.
 
+## v0.9.1: Vertrauen-Liste mit Begründung, Prüffehler sichtbar, lange Mails ganz geprüft
+
+Ergebnis einer Durchsicht auf Umgehung und Fehlverhalten (nicht auf XSS: Banner im geschlossenen Shadow-DOM, nur
+`textContent`, `onMessageExternal` nur von der NovaBird-ID, `openLink` nur `http(s)`).
+
+- **Fehler sind keine Entwarnung.** Wirft `evaluate()` (Mail nicht lesbar, Fehler in einer Prüfung), antwortet
+  `getVerdict` mit `{ level: 'error' }` und das Banner zeigt grau „Prüfung nicht möglich“ (`renderError` in
+  `banner.js`). Vorher kam `null` an, also kein Banner – wie bei einer unauffälligen Mail. Im Schattenmodus bleibt es still.
+- **Anfang und Ende.** `features.js` kürzt Text über 20.000 Zeichen auf Anfang (14.000) + Ende (6.000); `html.js`
+  behält bei mehr als 250 Links die ersten 150 und letzten 100 (`headAndTail`, auch für Klartext-Links). Das HTML
+  selbst bleibt bei 400.000 Zeichen gedeckelt (`MAX_HTML`, der Hintergrund schneidet den Body ebenso). Gemessen:
+  420 KB mit 14.000 Links in 7 ms, 20.000 unvollständige `<a>` in unter 1 s – kein Hänger durch Regex-Rückzug.
+- **Vertrauen hat Grenzen.** `keep` in `analyzer.js` enthält jetzt `dkimFail`, `disguisedFile` und `extortion`.
+  Bei „gefährlich“ zeigt das Banner keinen Vertrauen-Knopf (`trust_blocked`), und `trustSender` im Hintergrund gibt
+  `false` zurück; das Banner bleibt dann stehen. Freigabe nur über die Einstellungen.
+- **Vertrauen-Liste mit Metadaten.** `storage.local.trustMeta[adresse] = { date, score, level, via: 'banner'|'settings',
+  reasons: [Texte] }` wird beim Vertrauen über das Banner geschrieben (Gründe als fertige Texte, höchstens 8 × 160 Zeichen,
+  lokal gespeichert wie die Adresse selbst). `config.trustedSenders` bleibt die Quelle für den Analyzer und das Format
+  älterer Versionen. Die Einstellungsseite rendert daraus die Liste mit „Entfernen“; beim Speichern werden Metadaten zu
+  entfernten Adressen gelöscht. Was bewusst **nicht** gebaut wurde: ein lernender Inhaltsfilter (Bayes, Ähnlichkeit) –
+  eine gefälschte Rechnung ähnelt der echten absichtlich. Gelernt wird nur, was ein Angreifer nicht fälschen kann
+  (Adresse angeschrieben, „wiederkehrend“ ohne Auffälligkeit, Bezug über Anker) oder was der Nutzer ausdrücklich bestätigt.
+- Bekannt offen: `hasObfuscatedScript` setzt bei ≥ 600 Zeichen sichtbarem Text aus (gespeicherte Webseiten); 600 Zeichen
+  Füllstoff umgehen das. Ein Verhältnis Skript/Text wäre der nächste Schritt, erzeugt aber bei gespeicherten Seiten mit
+  großen Skript-Bundles (`atob` ist dort üblich) Fehlalarme.
+
 ## Build und Namen
 
 `./build-xpi.sh` baut `dist/novabird-phishing-<version>.xpi` (ungesigniert) und behält die neueste Version plus die 3 vorherigen.

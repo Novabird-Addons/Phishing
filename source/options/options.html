@@ -22,6 +22,13 @@
   .checks label, #folders label, #langs label, #books label { font-weight: normal; margin: 3px 0; }
   #langs button { margin: 0 0 0 8px; padding: 0 6px; }
   #folders { max-height: 240px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+  .row input[type="text"] { flex: 1 1 16em; font: inherit; }
+  .trustlist:empty::before { content: attr(data-empty); color: GrayText; }
+  .trustlist .entry { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .trustlist .entry:last-child { border-bottom: 0; }
+  .trustlist .entry > button { grid-column: 2; grid-row: 1 / span 2; align-self: start; }
+  .trustlist .meta { grid-column: 1; color: GrayText; font-size: 12px; }
+  .trustlist ul { grid-column: 1 / -1; margin: 2px 0 0; padding-left: 18px; color: GrayText; font-size: 12px; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 4px 0 24px; }
   .actions button.primary { background: AccentColor; color: AccentColorText; border: 0; border-radius: 6px; padding: 6px 16px; font: inherit; font-weight: 600; cursor: pointer; }
   #saveStatus { color: AccentColor; }
@@ -100,8 +107,10 @@
 
 <section class="card">
   <h2 data-i18n="opt_sec_trust"></h2>
-  <label for="trusted" data-i18n="opt_trusted"></label>
-  <textarea id="trusted" rows="3"></textarea>
+  <label for="trustedAdd" data-i18n="opt_trusted"></label>
+  <div id="trustedList" class="trustlist"></div>
+  <div class="row"><input id="trustedAdd" type="text" spellcheck="false" placeholder="name@example.org"><button id="trustedAddBtn" type="button" data-i18n="opt_trusted_add"></button></div>
+  <small data-i18n="opt_trusted_hint"></small>
   <label for="ownDomains" data-i18n="opt_own"></label>
   <textarea id="ownDomains" rows="3"></textarea>
   <small data-i18n="opt_own_hint"></small>

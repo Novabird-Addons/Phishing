@@ -532,7 +532,12 @@ async function handleMessage(msg, sender) {
   if (id === null) return null;
 
   if (msg.type === 'getVerdict') {
-    const verdict = await evaluate(id);
+    let verdict;
+    try { verdict = await evaluate(id); } catch (e) {
+      // Prüfung gescheitert (Mail nicht lesbar, interner Fehler): nicht stumm "keine Warnung" zeigen, sondern "ungeprüft"
+      console.error('Bewertung fehlgeschlagen', e?.message, e?.stack);
+      return { verdict: config.mode === 'shadow' ? null : { level: 'error', ui: uiStrings(lang()) }, remote: false };
+    }
     if (config.mode === 'shadow') { await shadowLog(verdict); return { verdict: null, remote: false }; }
     return {
       verdict: verdict.level === 'normal' ? null : bannerPayload(verdict),
@@ -561,10 +566,17 @@ async function handleMessage(msg, sender) {
 
   if (msg.type === 'trustSender') {
     const verdict = await evaluate(id);
+    // "gefährlich" lässt sich nicht per Klick entwarnen – nur bewusst über die Einstellungen
+    if (verdict.level === 'dangerous') return false;
     if (verdict.author && !config.trustedSenders.includes(verdict.author)) {
-      const { config: stored = {} } = await messenger.storage.local.get('config');
+      const { config: stored = {}, trustMeta = {} } = await messenger.storage.local.get(['config', 'trustMeta']);
       stored.trustedSenders = [...(stored.trustedSenders ?? []), verdict.author];
-      await messenger.storage.local.set({ config: stored });
+      // Warum und wann vertraut wurde, damit sich der Eintrag in den Einstellungen später einordnen und löschen lässt
+      trustMeta[verdict.author] = {
+        date: Date.now(), score: verdict.score, level: verdict.level, via: 'banner',
+        reasons: reasons(verdict).map((r) => r.text.slice(0, 160)).slice(0, 8),
+      };
+      await messenger.storage.local.set({ config: stored, trustMeta });
     }
     // Warn-Tag dieser Mail entfernen, damit auch die Nachrichtenliste nicht mehr warnt
     const shown = await messenger.messages.get(id).catch(() => null);

@@ -92,8 +92,32 @@
     }
   }
 
+  // Prüfung gescheitert: neutraler Hinweis statt stillem "keine Warnung" – ein Fehler darf nicht wie Entwarnung aussehen
+  function renderError(ui) {
+    state.host?.remove();
+    state.danger = false;
+    const host = document.createElement('div');
+    host.id = 'phishing-pilot-banner';
+    host.dataset.level = 'error';
+    const root = host.attachShadow({ mode: 'closed' });
+    const style = document.createElement('style');
+    style.textContent = `
+      :host { all: initial; display: block; flex: none; }
+      .box { font: 13px/1.35 system-ui, sans-serif; margin: 0 0 10px; padding: 6px 12px 6px 10px; border-radius: 8px;
+             border: 1px solid #CFCFCF; border-left: 6px solid #8A8A8A; background: #F4F4F4; color: #222; }`;
+    const box = document.createElement('div');
+    box.className = 'box';
+    box.append(Object.assign(document.createElement('b'), { textContent: ui.banner_error_title }), ' ', ui.banner_error_text);
+    root.append(style, box);
+    state.host = host;
+    state.ui = ui;
+    harden(host);
+    attach();
+  }
+
   function render(payload) {
     if (state.trusted) return;
+    if (payload.level === 'error') return renderError(payload.ui);
     state.host?.remove();
     const { level, score, reasons, ui } = payload;
     const danger = level === 'dangerous';
@@ -169,38 +193,40 @@
       hint.addEventListener('click', toggle);
       foot.append(hint);
     }
-    const trust = document.createElement('button');
-    trust.textContent = ui.banner_trust;
-    // Rückfrage direkt im Banner: window.confirm() wird im Nachrichtenbereich (z. B. in NovaBird-Conversation)
-    // still unterdrückt und liefert sofort "Abbrechen" – dann passierte beim Klick scheinbar nichts.
-    const ask = document.createElement('div');
-    ask.className = 'ask';
-    const askText = document.createElement('p');
-    const yes = Object.assign(document.createElement('button'), { className: 'yes', textContent: ui.trust_yes });
-    const no = Object.assign(document.createElement('button'), { textContent: ui.trust_cancel });
-    const askBtns = document.createElement('div');
-    askBtns.className = 'askbtns';
-    askBtns.append(no, yes);
-    ask.append(askText, askBtns);
-    let step = 0;   // gefährlich: zwei Rückfragen, sonst eine
-    const showAsk = () => {
-      askText.textContent = step === 0 ? (danger ? ui.trust_confirm_dangerous.replace('{0}', score) : ui.trust_confirm) : ui.trust_confirm_final;
-      box.classList.add('asking');
-      yes.focus();
-    };
-    trust.addEventListener('click', () => { step = 0; showAsk(); });
-    no.addEventListener('click', () => { box.classList.remove('asking'); trust.focus(); });
-    yes.addEventListener('click', async () => {
-      if (danger && step === 0) { step = 1; showAsk(); return; }
-      yes.disabled = no.disabled = true;
-      await api.runtime.sendMessage({ type: 'trustSender' }).catch(() => {});
-      state.trusted = true;
-      state.danger = false;
-      state.host?.remove();
-    });
     const actions = document.createElement('span');
     actions.className = 'actions';
-    actions.append(why, trust);
+    actions.append(why);
+    const ask = document.createElement('div');
+    ask.className = 'ask';
+    if (danger) {
+      // Bei "gefährlich" gibt es keinen Vertrauen-Knopf: Ein Klick darf eine so auffällige Mail nicht entwarnen.
+      // Wer die Adresse trotzdem freigeben will, trägt sie bewusst in den Einstellungen ein.
+      actions.append(Object.assign(document.createElement('span'), { className: 'small', textContent: ui.trust_blocked, title: ui.trust_blocked_hint }));
+    } else {
+      const trust = document.createElement('button');
+      trust.textContent = ui.banner_trust;
+      // Rückfrage direkt im Banner: window.confirm() wird im Nachrichtenbereich (z. B. in NovaBird-Conversation)
+      // still unterdrückt und liefert sofort "Abbrechen" – dann passierte beim Klick scheinbar nichts.
+      const askText = Object.assign(document.createElement('p'), { textContent: ui.trust_confirm });
+      const yes = Object.assign(document.createElement('button'), { className: 'yes', textContent: ui.trust_yes });
+      const no = Object.assign(document.createElement('button'), { textContent: ui.trust_cancel });
+      const askBtns = document.createElement('div');
+      askBtns.className = 'askbtns';
+      askBtns.append(no, yes);
+      ask.append(askText, askBtns);
+      trust.addEventListener('click', () => { box.classList.add('asking'); yes.focus(); });
+      no.addEventListener('click', () => { box.classList.remove('asking'); trust.focus(); });
+      yes.addEventListener('click', async () => {
+        yes.disabled = no.disabled = true;
+        const ok = await api.runtime.sendMessage({ type: 'trustSender' }).catch(() => false);
+        // Hintergrund lehnt ab (inzwischen "gefährlich" bewertet, Fehler): Banner bleibt
+        if (ok !== true) { yes.disabled = no.disabled = false; box.classList.remove('asking'); return; }
+        state.trusted = true;
+        state.danger = false;
+        state.host?.remove();
+      });
+      actions.append(trust);
+    }
     head.append(icon, h, small);
     foot.append(actions);
     box.append(head, ul, foot, ask);
