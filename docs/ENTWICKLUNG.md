@@ -258,7 +258,13 @@ Fälschungs-Signal, kein Bonus). Damit deckt jeder Nutzer „seine“ Firmen ab,
 - `tests/` – Unit-Tests (`npm test`), E2E-Tests mit headless Thunderbird (`tests/e2e/`), Offline-Werkzeug `tests/tools/eml-run.mjs`
 - `tools/` – Generatoren (z. B. Bankliste aus Wikidata)
 - `docs/` – diese Datei, Screenshots, Release-Texte
-- `build-xpi.sh` – baut `dist/novabird-phishing-<version>.xpi` aus `source/` plus LICENSE, THIRD_PARTY.md, README.md
+- `build-xpi.sh` – baut `dist/novabird-phishing-<version>.xpi` aus `source/` plus LICENSE, THIRD_PARTY.md, README.md und
+  prüft das Paket danach mit `tools/privacy-check.sh` (bei Treffern wird das XPI gelöscht)
+- `tools/privacy-check.sh [--history] [xpi …]` – sucht persönliche Daten in den Dateien des Repositorys, in noch nicht
+  gepushten Commit-Texten (mit `--history`: in allen Änderungen und Texten) und in XPIs; `npm run privacy` vor jedem Push.
+  Die Suchbegriffe stehen nur lokal in `testdata/privacy-patterns.txt` (ein regulärer Ausdruck pro Zeile) – im Repository
+  würden sie genau das veröffentlichen, was sie schützen sollen. Ohne Liste überspringt das Skript die Prüfung mit Warnung.
+  Anlass: Bis 0.9.0 standen in Code-Kommentaren echte Beispiele aus Testmails und landeten so in den XPIs.
 - lokal und nicht im Repository: `dist/` (gebaute XPIs), `testdata/` (`phishingset/`, `legitset/`, `andere addons/` – private Testmails
   und fremde Add-ons), `work/` (`testext/` Testkopie, `testprofile/`, `testconv/` Conversation-Testkopie – wird von den Tests erzeugt,
   kann jederzeit gelöscht werden)
