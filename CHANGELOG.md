@@ -1,6 +1,6 @@
 # Änderungen
 
-## 0.9.1 – Vertrauen-Liste mit Begründung, Prüffehler sichtbar, lange Mails ganz geprüft (in Arbeit)
+## 0.9.1 – Vertrauen-Liste mit Begründung, Prüffehler sichtbar, lange Mails ganz geprüft (2026-11-03)
 
 ### Haftungshinweis (wie in der Android-Version)
 
