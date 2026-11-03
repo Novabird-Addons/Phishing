@@ -18,6 +18,8 @@
 
 - Scheitert die Prüfung einer Mail (nicht lesbar, interner Fehler), zeigt das Banner jetzt grau „Prüfung nicht möglich“ statt gar nichts. Vorher sah ein Fehler aus wie eine unauffällige Mail.
 - Sehr lange Mails werden am Anfang **und** am Ende geprüft: Text über 20.000 Zeichen als 14.000 + letzte 6.000 Zeichen, bei über 250 Links die ersten 150 und letzten 100. Bisher zählte nur der Anfang, hinter harmlosem Füllstoff ließ sich der Köder verstecken.
+- Gefälschte `Authentication-Results`: Ohne Einstellung zählte die oberste Kopfzeile – schreibt der eigene Mailserver keine, war das eine vom Absender selbst eingefügte („dmarc=pass“). Jetzt lernt das Add-on je Konto aus neuen Mails, welche authserv-id oben steht. Ab 10 Mails und 80 % für einen Wert gilt nur dieser; schreibt der Server gar keine Kopfzeile, werden alle ignoriert. Eine Eingabe unter „Eigene Mailserver“ hat Vorrang. Folge für Konten ohne eigene Kopfzeile: DKIM bestätigt dort keinen Absender mehr (der Server hat nichts geprüft). Gleiche Regel wie in NovaBird für Android.
+- Bösartiges HTML kann die Prüfung nicht mehr aufhalten: Text, Links, Formulare, versteckter Text und Skripte werden in linearer Zeit gelesen. Vorher brauchten 400 KB offene Tags („<a href=“ ohne „>“) oder offene Kommentare über 15 Sekunden, ein 100 KB langer Absendername 5 Sekunden. Absendernamen über 300 Zeichen werden auf Anfang und Ende gekürzt.
 
 ## 0.9.0 – Bezug zu früheren Mails, lokale KI über NovaBird, weniger Fehlalarme (2026-11-01)
 

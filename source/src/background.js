@@ -20,6 +20,7 @@ import { fetchRemoteImages, remoteScanAllowed } from './remote.js';
 import { imageKey } from './lib/features.js';
 import { t, uiStrings } from './i18n.js';
 import { anonymizeEml } from './lib/anonymize.js';
+import { learnedAuthservIds, noteAuthserv, topAuthservId } from './lib/authserv.js';
 
 const lang = () => messenger.i18n.getUILanguage();
 const TAG_KEYS = { suspicious: 'phishpilot_suspicious', dangerous: 'phishpilot_dangerous' };
@@ -93,6 +94,29 @@ function saveSenderIndexSoon() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => messenger.storage.local.set({ senderIndex }), 3000);
 }
+// ---------- Eigener Mailserver je Konto (lib/authserv.js) ----------
+// authservStats: { [accountId]: { [authserv-id]: Anzahl } } – eigener Schlüssel, nicht in config (dessen Änderung leert Caches)
+let authservStats = null;
+let authservTimer = null;
+async function loadAuthservStats() {
+  if (!authservStats) authservStats = (await messenger.storage.local.get('authservStats')).authservStats ?? {};
+  return authservStats;
+}
+/** Konfiguration mit den vertrauten authserv-ids für dieses Konto: Einstellung vor Gelerntem, sonst alte Regel. */
+async function authservConfig(config, accountId) {
+  if (config.trustedAuthservIds.length || !accountId) return config;
+  const learned = learnedAuthservIds(await loadAuthservStats(), accountId);
+  return learned ? { ...config, trustedAuthservIds: learned } : config;
+}
+const NOT_RECEIVED = ['sent', 'drafts', 'templates', 'outbox'];
+async function countAuthserv(folder, messageId) {
+  if (!folder?.accountId || folderUses(folder).some((u) => NOT_RECEIVED.includes(u))) return;
+  const headers = normalizeHeaders(await messenger.messages.getHeaders(messageId));
+  noteAuthserv(await loadAuthservStats(), folder.accountId, topAuthservId(headers['authentication-results']));
+  clearTimeout(authservTimer);
+  authservTimer = setTimeout(() => messenger.storage.local.set({ authservStats }), 3000);
+}
+
 const msgTime = (m) => (m.date instanceof Date ? m.date.getTime() : null);
 const historySince = (config) => new Date(Date.now() - historyMonths(config.historyMonths) * 30.44 * DAY);
 
@@ -320,7 +344,7 @@ async function trustedEarlier(m, date, fromRd, contacts, idx) {
   if (!author) return false;
   if (contacts.addresses.has(author) || trustLevel(idx[author])) return true;
   if (date - t < RELATED_DKIM_MIN_AGE || headerSuspicion(m.author).length) return false;
-  const f = buildFeatures({ headers: await messenger.messages.getHeaders(m.id), parts: [] });
+  const f = buildFeatures({ headers: await messenger.messages.getHeaders(m.id), parts: [] }, await authservConfig(await getConfig(), m.folder?.accountId));
   const rd = f.from ? registrableDomain(f.from.domain) : '';
   return !!rd && rd !== fromRd && f.auth.dmarc !== 'fail' && (f.auth.dkimDomains ?? []).some((d) => registrableDomain(d) === rd);
 }
@@ -406,7 +430,7 @@ async function computeVerdict(messageId) {
   const images = await loadEmbeddedImages(messageId).catch((e) => { console.warn('Bilder nicht lesbar', e?.message); return []; });
   const qrUrls = [...await findQrUrls(images).catch((e) => { console.warn('QR-Suche fehlgeschlagen', e?.message); return []; }), ...(extra?.qrUrls ?? [])];
   const attachmentScan = await scanAttachments(messageId).catch((e) => { console.warn('Anhänge nicht lesbar', e?.message); return {}; });
-  const features = buildFeatures({ headers, parts: flattenParts(full), qrUrls, attachmentScan }, config);
+  const features = buildFeatures({ headers, parts: flattenParts(full), qrUrls, attachmentScan }, await authservConfig(config, header.folder?.accountId));
   let ocrLanguages = extra?.languages ?? [];
   let ocrMs = 0;
   if (config.ocr) {
@@ -478,6 +502,7 @@ messenger.messages.onNewMailReceived.addListener(async (folder, list) => {
   for (const m of list.messages) {
     try {
       const verdict = await evaluate(m.id);
+      await countAuthserv(folder, m.id).catch((e) => console.warn('authserv-id', e?.message));
       if (config.mode === 'shadow') await shadowLog(verdict);
       else if (config.tagMessages) { await ensureTags(); await applyTag(m.id, verdict.level); }
       // erst nach der Bewertung zählen, und nur unauffällige Mails; Spam und auffällige Mails markieren den Absender
