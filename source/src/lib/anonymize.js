@@ -79,7 +79,15 @@ function decodeWords(s) {
 /** Adressen und Namen aus einer Adresszeile ("Name <a@b>, c@d"). */
 function addressesIn(value) {
   const out = [];
-  for (const part of decodeWords(value).split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/)) {
+  // an Kommas außerhalb von Anführungszeichen trennen (von Hand: das Muster dafür prüft je Komma den Rest der Zeile)
+  const parts = [];
+  let cur = '', quote = false;
+  for (const ch of decodeWords(value)) {
+    if (ch === '"') quote = !quote;
+    if (ch === ',' && !quote) { parts.push(cur); cur = ''; } else cur += ch;
+  }
+  parts.push(cur);
+  for (const part of parts) {
     const addr = (part.match(/<([^<>\s]+@[^<>\s]+)>/) ?? part.match(/([^\s<>"',;]+@[^\s<>"',;]+)/) ?? [])[1];
     if (!addr) continue;
     const name = part.replace(/<[^>]*>/, '').replace(/["']/g, '').trim();

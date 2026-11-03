@@ -5,7 +5,8 @@ import { analyze, headerSuspicion, nameMatchesDomain, orgKey } from '../source/s
 import { lookalike, registrableDomain, toUnicodeHost, hasMixedScript, looksRandomDomain } from '../source/src/lib/domains.js';
 import { nameKey } from '../source/src/lib/text.js';
 import { parseAddressList, parseAuthResults } from '../source/src/lib/headers.js';
-import { extractLinks } from '../source/src/lib/html.js';
+import { extractLinks, hasHiddenText, hasObfuscatedScript, hasPasswordInput, stripTags } from '../source/src/lib/html.js';
+import { NO_AUTHSERV, learnedAuthservIds, noteAuthserv, topAuthservId } from '../source/src/lib/authserv.js';
 import { contactInfo, parseVCard } from '../source/src/lib/contacts.js';
 import { t, uiStrings } from '../source/src/i18n.js';
 import { flagRecord, historyMonths, isEstablished, noteRecord, trustLevel } from '../source/src/lib/history.js';
@@ -43,6 +44,34 @@ test('Adressen und Auth-Results', () => {
   assert.equal(parseAuthResults([own, fake]).dmarc, 'pass');           // oberster zählt
   assert.equal(parseAuthResults([fake, 'mx.me.de; dmarc=fail'], ['mx.me.de']).dmarc, 'fail');
   assert.equal(parseAuthResults([fake], ['mx.me.de']).present, false); // fremder Header ignoriert
+});
+
+test('Eigener Mailserver wird je Konto gelernt: gefälschte Authentication-Results zählen nicht', () => {
+  const learn = (top, n = 10) => { const s = {}; for (let i = 0; i < n; i++) noteAuthserv(s, 'acc1', topAuthservId(top ? [top] : [])); return s; };
+  const mail = (auth, stats) => analyze(mk({ from: ['Bank <info@bank.example>'], 'authentication-results': auth },
+    undefined, { trustedAuthservIds: learnedAuthservIds(stats, 'acc1') ?? [] }), ctx());
+  const forged = 'evil.example; dmarc=pass; spf=pass';
+  // (a) Server schreibt immer "mx.provider.example": oben gefälschtes Pass, darunter echtes Fail -> dmarcFail
+  const a = learn('MX.Provider.example; dmarc=pass');
+  assert.deepEqual(learnedAuthservIds(a, 'acc1'), ['mx.provider.example']);
+  assert.ok(ids(mail([forged, 'mx.provider.example; dmarc=fail'], a)).includes('dmarcFail'));
+  // (b) Server schreibt nie eine Kopfzeile: alle in der Mail sind vom Absender -> kein dmarcFail
+  const b = learn('');
+  assert.deepEqual(learnedAuthservIds(b, 'acc1'), [NO_AUTHSERV]);
+  assert.ok(!ids(mail(['x.example; dmarc=fail'], b)).includes('dmarcFail'));
+  assert.equal(parseAuthResults([forged], learnedAuthservIds(b, 'acc1')).present, false);
+  // zu wenig Mails, kein klarer Wert (6 zu 4) oder anderes Konto: alte Regel (oberste Kopfzeile)
+  assert.equal(learnedAuthservIds(learn('mx.provider.example', 9), 'acc1'), null);
+  const mixed = learn('mx.provider.example', 6);
+  for (let i = 0; i < 4; i++) noteAuthserv(mixed, 'acc1', 'other.example');
+  assert.equal(learnedAuthservIds(mixed, 'acc1'), null);
+  assert.equal(learnedAuthservIds(a, 'acc2'), null);
+  // begrenzt: höchstens 10 ids je Konto, nach 200 Mails halbiert (ein Anbieterwechsel setzt sich durch)
+  const many = {};
+  for (let i = 0; i < 500; i++) noteAuthserv(many, 'acc1', i < 300 ? 'old.example' : i % 3 ? 'new.example' : `x${i}.example`);
+  assert.ok(Object.keys(many.acc1).length <= 10);
+  assert.ok(Object.values(many.acc1).reduce((s, n) => s + n, 0) < 200);
+  assert.ok(many.acc1['new.example'] > many.acc1['old.example']);
 });
 
 test('Display-Name eines Kontakts, neue Adresse -> verdächtig (allein)', () => {
@@ -173,6 +202,36 @@ test('Als vertrauenswürdig markierter Absender unterdrückt Signale, nicht DMAR
   const r3 = analyze(f, ctx(), { trustedSenders: ['max.mustermann@gmail.com'] });
   assert.equal(r3.level, 'dangerous');
   assert.ok(r3.signals.some((s) => s.id === 'disguisedFile'));
+});
+
+test('Bösartiges HTML bremst die Prüfung nicht (keine quadratischen Muster)', () => {
+  const att = (body) => ({ contentType: 'text/html', name: 'x.html', body });
+  const cases = [
+    { body: '<a href="'.repeat(40_000) },                         // offene Tags ohne ">"
+    { body: '<!--'.repeat(100_000) },                              // offene Kommentare
+    { body: '<a href="https://x.example/">t'.repeat(13_000) },     // Links ohne </a>
+    { body: '<p style="display:none '.repeat(17_000) },
+    { att: '<script>a'.repeat(200_000) },                          // Skripte ohne Ende, im Anhang (ungekürzt)
+    { att: '<input type=text '.repeat(100_000) },
+    { from: `"${'a-'.repeat(50_000)}" <a@b.example>` },            // riesiger Anzeigename
+  ];
+  for (const c of cases) {
+    const t0 = performance.now();
+    const f = buildFeatures({ headers: { from: [c.from ?? 'a@b.example'], to: ['me@me.example'], subject: ['x'] },
+      parts: [html(c.body ?? '<p>Hallo</p>'), ...(c.att ? [att(c.att)] : [])] });
+    analyze(f, ctx());
+    assert.ok(performance.now() - t0 < 1000, JSON.stringify(c).slice(0, 60));
+  }
+  // Verhalten wie vorher: "<" ohne ">" bleibt Text, Kommentare/Skripte/Stile fallen weg, versteckter Text wird erkannt
+  assert.equal(stripTags('<p>Hallo</p><!-- weg --><script>x()</script><style>p{}</style> 3 < 4 und mehr'), 'Hallo 3 < 4 und mehr');
+  assert.equal(stripTags('a <!-- offen <b>fett</b>'), 'a fett');
+  assert.ok(hasHiddenText('<div style="display:none">Dies ist ein versteckter Text für Filter</div>'));
+  assert.ok(!hasHiddenText('<div style="color:red">Dies ist ein sichtbarer Text</div>'));
+  assert.ok(hasPasswordInput('<form><input name="p" type="password"></form>'));
+  assert.ok(hasObfuscatedScript('<script>document.write(atob("PGgxPkhp"))</script>'));
+  assert.ok(hasObfuscatedScript('<body onload="eval(unescape(\'%3Cp\'))"></body>'));
+  const [l] = extractLinks('<A HREF="https://evil.example/x"><img src="cid:1" width="300">Konto</a >');
+  assert.deepEqual([l.href, l.text, l.hasImage, l.imgWidth, l.imgSrc], ['https://evil.example/x', 'Konto', true, 300, 'cid:1']);
 });
 
 test('Lange Mails: Köder am Ende wird trotz Füllstoff davor gesehen', () => {

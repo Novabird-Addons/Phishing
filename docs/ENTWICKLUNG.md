@@ -369,7 +369,27 @@ Ergebnis einer Durchsicht auf Umgehung und Fehlverhalten (nicht auf XSS: Banner 
 - **Anfang und Ende.** `features.js` kürzt Text über 20.000 Zeichen auf Anfang (14.000) + Ende (6.000); `html.js`
   behält bei mehr als 250 Links die ersten 150 und letzten 100 (`headAndTail`, auch für Klartext-Links). Das HTML
   selbst bleibt bei 400.000 Zeichen gedeckelt (`MAX_HTML`, der Hintergrund schneidet den Body ebenso). Gemessen:
-  420 KB mit 14.000 Links in 7 ms, 20.000 unvollständige `<a>` in unter 1 s – kein Hänger durch Regex-Rückzug.
+  420 KB mit 14.000 Links in 7 ms.
+- **Keine quadratischen Muster.** Die Deckel allein reichten nicht: `/<[^>]*>/`, `/<!--[\s\S]*?-->/`,
+  `/<a\b([^>]*)>([\s\S]*?)<\/a\s*>/` u. a. laufen bei einem `<` ohne passendes Ende von *jedem* Ansatz bis zum Ende –
+  400 KB `<a href="` oder `<!--` dauerten 16–18 s, ein 100-KB-Anzeigename 5 s (`[\w.+-]+@` ohne `@`). Jetzt geht
+  `html.js` die Tags von Hand durch (`tagsOf`: ein Tag reicht vom letzten `<` vor einem `>`; `blockEnd` sucht das
+  schließende `</a>`/`</script>` einmal; ist keins mehr da, endet die Suche), und die Muster prüfen nur noch je ein
+  einzelnes Tag. `stripTags` merkt sich, wenn kein `>`, `-->` oder Block-Ende mehr folgt. Anzeigenamen über 300 Zeichen
+  kürzt `parseAddressList` auf Anfang (200) + Ende (100); `anonymize.js` trennt Adresslisten ohne Lookahead-Muster.
+  Alle Fälle jetzt unter 40 ms (Test „Bösartiges HTML bremst die Prüfung nicht“, Grenze 1 s). Gegenprobe alt/neu: echte
+  Mails und 20.000 wohlgeformte Zufalls-HTMLs identisch; nur bei kaputtem HTML liefert `stripTags` vereinzelt etwas
+  anderen Text (z. B. `<<!--…-->`). Die übrigen Muster (Text ≤ 20.000 Zeichen, Betreff, Kopfzeilen) sind ohne
+  verschachtelte Quantoren oder durch Trennzeichen eindeutig. Ein Worker mit Abbruch ist damit nicht nötig.
+- **authserv-id je Konto gelernt** (`lib/authserv.js`, wie NovaBird Android `ProtectionService.trustedAuthserv`).
+  `onNewMailReceived` zählt die id der obersten `Authentication-Results` jeder neuen Mail (`''` = keine; Gesendet,
+  Entwürfe, Vorlagen, Postausgang zählen nicht) in `storage.local.authservStats[accountId]` – eigener Schlüssel, weil
+  eine Änderung von `config` alle Caches leert. Ab 10 Mails und ≥ 80 % für eine id gilt `trustedAuthservIds = [id]`,
+  ist es `''`, die nie passende `no-authserv.invalid` (alle Kopfzeilen ignoriert). Darunter die alte Regel (oberste).
+  Höchstens 10 ids je Konto (ein Angreifer kann je Mail eine neue erfinden), ab 200 Mails halbiert, damit sich ein
+  Anbieterwechsel durchsetzt. Die Einstellung „Eigene Mailserver“ hat Vorrang. Gilt für die Bewertung und die
+  DKIM-Prüfung früherer Mails beim Bezug. Offen: Server mit wechselnden Namen (`mx01.`/`mx02.anbieter.de`) erreichen
+  die 80 % nicht und bleiben bei der alten Regel; ein Abgleich über die Domain wäre möglich, weicht aber von Android ab.
 - **Vertrauen hat Grenzen.** `keep` in `analyzer.js` enthält jetzt `dkimFail`, `disguisedFile` und `extortion`.
   Bei „gefährlich“ zeigt das Banner keinen Vertrauen-Knopf (`trust_blocked`), und `trustSender` im Hintergrund gibt
   `false` zurück; das Banner bleibt dann stehen. Freigabe nur über die Einstellungen.

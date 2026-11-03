@@ -40,6 +40,8 @@ export function parseAddressList(str) {
       address = part.trim();
       name = '';
     }
+    // Echte Namen sind kurz; ein riesiger Name bremst nur die Muster (100 KB: 5 s). Anfang und Ende bleiben.
+    if (name.length > 300) name = name.slice(0, 200) + ' ' + name.slice(-100);
     const at = address.lastIndexOf('@');
     if (at < 1 || address.includes(' ')) continue;
     address = address.toLowerCase();

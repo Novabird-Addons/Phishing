@@ -12,6 +12,8 @@ const COUNTRIES = {
   mt: ['Q233', 'mt'], nl: ['Q55', 'nl'], pl: ['Q36', 'pl'], pt: ['Q45', 'pt'], ro: ['Q218', 'ro'], sk: ['Q214', 'sk'],
   si: ['Q215', 'sl'], es: ['Q29', 'es'], se: ['Q34', 'sv'],
 };
+// Einträge, die auf Wunsch des Nutzers nicht in die Liste sollen (Wikidata-ID)
+const EXCLUDE = new Set(['Q2307427']);
 // Websites auf Plattformen sagen nichts über die Bank aus
 const PLATFORM = /(^|\.)(facebook|instagram|linkedin|twitter|x|youtube|google|wixsite|wordpress|blogspot|jimdo|business\.site|github)\.(com|io|site)$/;
 
@@ -44,7 +46,8 @@ for (const cc of wanted) {
   let kept = 0;
   for (const r of rows) {
     const name = r.bLabel.value;
-    if (/^Q\d+$/.test(name)) continue;                    // ohne Namen in den gewünschten Sprachen
+    if (EXCLUDE.has(r.b.value.split('/').pop())) continue;
+    if (/^Q\d+$/.test(name)) continue;                  // ohne Namen in den gewünschten Sprachen
     const domains = [...new Set(r.sites.value.split(' ').map((u) => {
       try { return registrableDomain(new URL(u).hostname.replace(/^www\./, '')); } catch { return null; }
     }).filter((d) => d && !PLATFORM.test(d)))];

@@ -16,13 +16,53 @@ export function decodeEntities(s) {
 const MAX_HTML = 400_000;
 const MAX_LINKS = 250;
 
+// Alles hier läuft in linearer Zeit. Muster wie /<[^>]*>/ oder /<!--[\s\S]*?-->/ laufen bei einem "<" ohne ">"
+// danach von jedem Ansatz bis zum Ende – 400 KB "<a href=" oder "<!--" dauerten so über 15 Sekunden.
+
+/** Ende eines Blocks wie <script>…</script> ab `from` (Index hinter dem schließenden Tag), -1 wenn keiner folgt. */
+function blockEnd(html, name, from) {
+  const re = new RegExp(`</${name}\\s*>`, 'gi');
+  re.lastIndex = from;
+  return re.exec(html) ? re.lastIndex : -1;
+}
+
+/** Alle Tags der Reihe nach als { tag, start, end }; ein Tag beginnt beim letzten "<" vor seinem ">". */
+function* tagsOf(html) {
+  let i = html.indexOf('<');
+  while (i >= 0) {
+    const end = html.indexOf('>', i + 1);
+    if (end < 0) return;                 // kein ">" mehr: es folgt kein Tag mehr
+    const start = html.lastIndexOf('<', end);
+    yield { tag: html.slice(start, end + 1), start, end: end + 1 };
+    i = html.indexOf('<', end + 1);
+  }
+}
+
+const RAW_BLOCK = /^<(script|style|head)\b/i;
 export function stripTags(html) {
-  return decodeEntities(
-    html
-      .replace(/<(script|style|head)\b[\s\S]*?<\/\1\s*>/gi, ' ')
-      .replace(/<!--[\s\S]*?-->/g, ' ')
-      .replace(/<[^>]*>/g, ' '),
-  ).replace(/\s+/g, ' ').trim();
+  let out = '', i = 0;
+  let noGt = false, noComment = false;
+  const noClose = {};
+  while (i < html.length) {
+    const lt = html.indexOf('<', i);
+    if (lt < 0 || noGt) { out += html.slice(i); break; }
+    out += html.slice(i, lt) + ' ';
+    if (!noComment && html.startsWith('<!--', lt)) {
+      const e = html.indexOf('-->', lt + 4);
+      if (e >= 0) { i = e + 3; continue; }
+      noComment = true;
+    }
+    const raw = RAW_BLOCK.exec(html.slice(lt, lt + 8));
+    if (raw && !noClose[raw[1].toLowerCase()]) {
+      const e = blockEnd(html, raw[1], lt);
+      if (e >= 0) { i = e; continue; }
+      noClose[raw[1].toLowerCase()] = true;
+    }
+    const gt = html.indexOf('>', lt + 1);
+    if (gt < 0) { noGt = true; out = out.slice(0, -1); i = lt; continue; }   // "<" ohne ">": bleibt Text
+    i = gt + 1;
+  }
+  return decodeEntities(out).replace(/\s+/g, ' ').trim();
 }
 
 function attr(tag, name) {
@@ -52,23 +92,32 @@ function headAndTail(list) {
   return list.length > MAX_LINKS ? [...list.slice(0, 150), ...list.slice(-100)] : list;
 }
 
+function firstTag(html, re) {
+  for (const { tag } of tagsOf(html)) if (re.test(tag)) return tag;
+  return null;
+}
+
 export function extractLinks(html) {
   html = html.slice(0, MAX_HTML);
   const links = [];
-  const re = /<a\b([^>]*)>([\s\S]*?)<\/a\s*>/gi;
-  let m;
-  while ((m = re.exec(html))) {
+  let after = 0;   // hinter dem letzten </a>
+  for (const { tag, start, end } of tagsOf(html)) {
+    if (start < after || !/^<a\b/i.test(tag)) continue;
+    const close = blockEnd(html, 'a', end);
+    if (close < 0) break;                // kein </a> mehr: kein weiterer Link
+    after = close;
+    const m = [null, tag.slice(2, -1), html.slice(end, html.lastIndexOf('<', close - 1))];
     const href = m[1].match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
     if (!href) continue;
-    const img = m[2].match(/<img\b[^>]*>/i);
+    const img = firstTag(m[2], /^<img\b/i);
     links.push({
       href: decodeEntities((href[1] ?? href[2] ?? href[3] ?? '').trim()),
       text: stripTags(m[2]),
       hasImage: !!img,
-      imgWidth: img ? imageWidth(img[0]) : 0,
-      imgHeight: img ? imageHeight(img[0]) : 0,
-      imgSrc: img ? attr(img[0], 'src') : '',
-      imgAlt: img ? attr(img[0], 'alt') : '',
+      imgWidth: img ? imageWidth(img) : 0,
+      imgHeight: img ? imageHeight(img) : 0,
+      imgSrc: img ? attr(img, 'src') : '',
+      imgAlt: img ? attr(img, 'alt') : '',
     });
   }
   return headAndTail(links);
@@ -77,12 +126,21 @@ export function extractLinks(html) {
 /** Verschleierter Programmcode in angehängtem HTML/SVG: Skript baut den Inhalt erst zur Laufzeit auf.
  *  Dekodier-Funktionen oder lange Base64-/Hex-Ketten im Skript, und daneben kaum sichtbarer Text. */
 export function hasObfuscatedScript(html) {
-  const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)].map((m) => m[1]);
-  const handlers = html.match(/\bon(?:load|error|click|focus)\s*=\s*("[^"]*"|'[^']*')/gi) ?? [];
+  const scripts = [], handlers = [];
+  let after = 0;   // hinter dem letzten </script>
+  for (const { tag, start, end } of tagsOf(html)) {
+    if (start < after) continue;
+    handlers.push(...(tag.match(/\bon(?:load|error|click|focus)\s*=\s*("[^"]*"|'[^']*')/gi) ?? []));
+    if (!/^<script\b/i.test(tag)) continue;
+    const close = blockEnd(html, 'script', end);
+    if (close < 0) break;
+    scripts.push(html.slice(end, html.lastIndexOf('<', close - 1)));
+    after = close;
+  }
   const src = scripts.join('\n') + ' ' + handlers.join(' ');
   if (!src.trim()) return false;
-  // Eine gespeicherte echte Webseite hat viel sichtbaren Text – die bleibt außen vor
-  if (stripTags(html.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, ' ')).length >= 600) return false;
+  // Eine gespeicherte echte Webseite hat viel sichtbaren Text – die bleibt außen vor (stripTags lässt Skripte weg)
+  if (stripTags(html).length >= 600) return false;
   if (/\b(atob|unescape|String\.fromCharCode)\s*\(/.test(src)) return true;
   if (/["'][A-Za-z0-9+/]{400,}={0,2}["']/.test(src)) return true;
   return /(?:\\x[0-9a-f]{2}|%[0-9a-f]{2}){60,}/i.test(src);
@@ -95,7 +153,7 @@ export function extractTextLinks(text) {
 }
 
 export function hasPasswordInput(html) {
-  return /<input\b[^>]*\btype\s*=\s*["']?password/i.test(html);
+  return !!firstTag(html, /^<input\b[^>]*\btype\s*=\s*["']?password/i);
 }
 
 export function hasImage(html) {
@@ -104,6 +162,10 @@ export function hasImage(html) {
 
 /** Grober Hinweis auf versteckten Text (display:none, font-size:0, ...). */
 export function hasHiddenText(html) {
-  return /<[a-z0-9]+\b[^>]*style\s*=\s*["'][^"']*(?:display\s*:\s*none|font-size\s*:\s*0(?:px)?\s*(?:;|["'])|visibility\s*:\s*hidden)[^"']*["'][^>]*>[^<]{20,}/i
-    .test(html.slice(0, MAX_HTML));
+  html = html.slice(0, MAX_HTML);
+  for (const { tag, end } of tagsOf(html)) {
+    if (/^<[a-z0-9]+\b[^>]*style\s*=\s*["'][^"']*(?:display\s*:\s*none|font-size\s*:\s*0(?:px)?\s*(?:;|["'])|visibility\s*:\s*hidden)[^"']*["'][^>]*>$/i.test(tag) &&
+      /^[^<]{20}/.test(html.slice(end, end + 20))) return true;
+  }
+  return false;
 }
