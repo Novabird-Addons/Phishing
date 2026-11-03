@@ -25,5 +25,7 @@ PY
 echo "$OUT"
 unzip -l "$OUT" | tail -n +4 | awk '{print $1, $4}' | head -40
 sha256sum "$OUT"
+# Persönliche Daten im Paket? Begriffe nur lokal in testdata/privacy-patterns.txt (siehe tools/privacy-check.sh)
+if ! bash tools/privacy-check.sh "$OUT"; then rm -f "$OUT"; echo "XPI gelöscht: Datenschutz-Prüfung fehlgeschlagen" >&2; exit 1; fi
 # Neueste Version plus die 3 vorherigen behalten, ältere löschen
 ls -1 dist/*.xpi | sed -E 's/.*-([0-9.]+)\.xpi$/\1 &/' | sort -V | awk '{print $2}' | head -n -4 | xargs -r rm -v
