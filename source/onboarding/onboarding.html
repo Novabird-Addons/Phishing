@@ -24,6 +24,12 @@
   h1 { font-size: 15px; font-weight: 600; margin: 0; }
   p { margin: 0; line-height: 1.45; }
   .muted { color: var(--sp-muted); font-size: 12px; }
+  /* Haftungshinweis wie in der Android-Version: erst nach dem Haken lässt sich übernehmen */
+  .disc { background: var(--sp-card); border: 1px solid var(--sp-border); border-radius: 10px; padding: 8px 12px; }
+  .disc p { margin: 6px 0; }
+  .disc label { display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; font-weight: 600; cursor: pointer; }
+  .disc input { margin: 2px 0 0; accent-color: var(--sp-accent); }
+  button:disabled { opacity: .5; cursor: default; }
   .books {
     background: var(--sp-card); border: 1px solid var(--sp-border); border-radius: 10px;
     box-shadow: 0 6px 24px rgba(20, 40, 80, 0.10); padding: 6px 4px; max-height: 210px; overflow: auto;
@@ -49,6 +55,13 @@
   <div class="books" id="books"></div>
   <p class="muted" id="hint"></p>
   <p class="muted" id="scan"></p>
+  <div class="disc">
+    <b id="disc_title"></b>
+    <p id="disc_p1"></p>
+    <p id="disc_p2"></p>
+    <p id="disc_p3"></p>
+    <label><input type="checkbox" id="disc_ok"> <span id="disc_check"></span></label>
+  </div>
   <div class="row">
     <span class="status" id="status"></span>
     <button id="more" type="button"></button>

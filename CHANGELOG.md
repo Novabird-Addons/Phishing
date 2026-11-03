@@ -2,6 +2,12 @@
 
 ## 0.9.1 – Vertrauen-Liste mit Begründung, Prüffehler sichtbar, lange Mails ganz geprüft (in Arbeit)
 
+### Haftungshinweis (wie in der Android-Version)
+
+- Der Einrichtungsdialog zeigt den Hinweis „Wichtig – bitte lesen“: Der Filter arbeitet nach bestem Wissen, ist aber nicht perfekt; eine fehlende Warnung ist keine Garantie; Nutzung auf eigene Verantwortung, jeder Klick auf einen Link, jede Antwort, jeder Anhang und jede Zahlung bleibt Entscheidung und Verantwortung des Nutzers. „Übernehmen“ geht erst nach dem Haken „Ich habe das gelesen und verstanden“ (gespeichert als `disclaimerAccepted`).
+- Wer schon eingerichtet hat, sieht den Dialog nach dem Update einmal erneut (Adressbuch-Auswahl bleibt wie gespeichert).
+- Derselbe Text steht dauerhaft oben in den Einstellungen.
+
 ### Vertrauen und Ausnahmen
 
 - Die Liste „Vertraute Absender“ in den Einstellungen zeigt je Adresse, seit wann sie vertraut ist, ob der Eintrag über das Banner oder von Hand kam, die damalige Bewertung und die Gründe der Warnung. Jeder Eintrag hat einen „Entfernen“-Knopf; neue Adressen kommen über ein Eingabefeld dazu. Einträge aus früheren Versionen bleiben erhalten, nur ohne Angaben.
