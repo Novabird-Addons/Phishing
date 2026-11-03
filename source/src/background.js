@@ -644,10 +644,11 @@ messenger.menus.onClicked.addListener(async (info) => {
 });
 
 // ---------- Einrichtungsdialog (einmalig): vertrauenswürdige Adressbücher wählen ----------
-const ONBOARDING = { width: 520, height: 480 };
+// Auch nach einem Update einmal, solange der Haftungshinweis noch nicht bestätigt ist (ab 0.9.1)
+const ONBOARDING = { width: 520, height: 680 };
 async function showOnboardingOnce() {
-  const { onboardingDone } = await messenger.storage.local.get('onboardingDone');
-  if (onboardingDone) return;
+  const { onboardingDone, disclaimerAccepted } = await messenger.storage.local.get(['onboardingDone', 'disclaimerAccepted']);
+  if (onboardingDone && disclaimerAccepted) return;
   const url = messenger.runtime.getURL('onboarding/onboarding.html');
   for (const w of await messenger.windows.getAll({ populate: true })) {
     if (w.tabs?.some((tab) => tab.url === url)) { await messenger.windows.update(w.id, { focused: true }); return; }

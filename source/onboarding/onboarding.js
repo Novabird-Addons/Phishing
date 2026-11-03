@@ -8,6 +8,13 @@ const tr = (key) => t(lang, key);
 
 (async () => {
   for (const id of ['title', 'intro', 'scan', 'more', 'save']) $(id).textContent = tr('onb_' + id);
+  for (const id of ['disc_title', 'disc_p1', 'disc_p2', 'disc_p3', 'disc_check']) $(id).textContent = tr(id);
+  // Haftungshinweis: Übernehmen erst nach „gelesen und verstanden“ (bleibt gespeichert, siehe disclaimerAccepted)
+  const { disclaimerAccepted } = await messenger.storage.local.get('disclaimerAccepted');
+  $('disc_ok').checked = Boolean(disclaimerAccepted);
+  const syncButtons = () => { $('save').disabled = $('more').disabled = !$('disc_ok').checked; };
+  $('disc_ok').addEventListener('change', syncButtons);
+  syncButtons();
   document.title = tr('onb_title');
 
   const { config = {} } = await messenger.storage.local.get('config');
@@ -39,7 +46,7 @@ const tr = (key) => t(lang, key);
     const { config: stored = {} } = await messenger.storage.local.get('config');
     // wie der Standard -> null, damit später angelegte Adressbücher automatisch mitzählen
     stored.contactBookIds = JSON.stringify(ids) === JSON.stringify([...defaults].sort()) ? null : ids;
-    await messenger.storage.local.set({ config: stored, onboardingDone: true });
+    await messenger.storage.local.set({ config: stored, onboardingDone: true, disclaimerAccepted: Date.now() });
   }
   $('save').addEventListener('click', async () => {
     await save();
@@ -51,5 +58,5 @@ const tr = (key) => t(lang, key);
     await messenger.runtime.openOptionsPage();
     await close();
   });
-  $('save').focus();
+  ($('disc_ok').checked ? $('save') : $('disc_ok')).focus();
 })();
