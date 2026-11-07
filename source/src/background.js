@@ -553,12 +553,22 @@ async function handleMessage(msg, sender) {
     await messenger.windows.openDefaultBrowser(url.href);
     return true;
   }
+  // Texte und Modus für die Link-Sperre im Banner, bevor die Bewertung fertig ist
+  if (msg.type === 'linkInfo') return { ui: uiStrings(lang()), off: config.mode === 'shadow' };
   const id = await displayedMessageId(sender);
   if (id === null) return null;
 
   if (msg.type === 'getVerdict') {
     let verdict;
-    try { verdict = await evaluate(id); } catch (e) {
+    try {
+      verdict = await evaluate(id);
+      // Gehört die gemerkte Bewertung noch zu dieser Mail? (ids sind je Sitzung eindeutig; Absicherung, falls
+      // Thunderbird eine id nach Reparatur eines Ordners doch einer anderen Mail zuordnet)
+      if (verdict.headerMessageId !== (await messenger.messages.get(id)).headerMessageId) {
+        verdictCache.delete(id);
+        verdict = await evaluate(id);
+      }
+    } catch (e) {
       // Prüfung gescheitert (Mail nicht lesbar, interner Fehler): nicht stumm "keine Warnung" zeigen, sondern "ungeprüft"
       console.error('Bewertung fehlgeschlagen', e?.message, e?.stack);
       return { verdict: config.mode === 'shadow' ? null : { level: 'error', ui: uiStrings(lang()) }, remote: false };

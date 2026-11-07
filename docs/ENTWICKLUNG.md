@@ -410,6 +410,23 @@ Ergebnis einer Durchsicht auf Umgehung und Fehlverhalten (nicht auf XSS: Banner 
   Füllstoff umgehen das. Ein Verhältnis Skript/Text wäre der nächste Schritt, erzeugt aber bei gespeicherten Seiten mit
   großen Skript-Bundles (`atob` ist dort üblich) Fehlalarme.
 
+## v0.9.2: Link-Sperre ab dem Öffnen der Mail
+
+Befund aus dem Android-Review: `guardLink` griff nur bei `state.danger`, und das
+setzt erst `render` nach `getVerdict` – während der Prüfung, nach Prüffehlern und ohne Bewertung (mehrere Mails)
+waren Links offen, außerdem nur `http(s)` abgefangen. Jetzt entscheidet `src/content/linkpolicy.js` (klassisches
+Skript vor `banner.js`, Unit-Test `tests/linkpolicy.test.js`) aus `status` (`pending`/`done`/`unchecked`/`off`),
+`danger` und Schema: `allow`, `wait`, `confirmDanger`, `confirmUnchecked`, `blockScheme`. `banner.js` startet mit
+`pending`; ein Klick wartet bis 5 s auf die Bewertung (Hinweis „wird noch geprüft“), danach je nach Ergebnis frei,
+Rückfrage oder (bei Zeitlimit) „nicht geprüft“. Web-Links öffnet nach der Rückfrage `openLink` im Standardbrowser;
+andere Schemata kann nur ein echter Klick öffnen (nach „Öffnen“ darf der nächste Klick auf denselben Link durch).
+Rückfragen sind ein eigener Dialog im Shadow-DOM (`#phishing-pilot-ask`), weil `confirm()` im Nachrichtenbereich
+unterdrückt wird (siehe 0.5.6) – die alte Rückfrage bei „gefährlich“ lieferte dort still „Abbrechen“. Texte kommen
+vorab über `linkInfo` (Schattenmodus: `off`, nichts sichtbar). `getVerdict` vergleicht eine gemerkte Bewertung mit der
+`headerMessageId` der angezeigten Mail. Getestet in Thunderbird 153 unter Windows (Testkopie mit 3 s verzögerter
+Bewertung): Klick während der Prüfung bei gefährlicher und unauffälliger Mail, `file:`/`mailto:` nach „gefährlich“,
+Prüffehler mit Abbrechen und Öffnen – 4/4. Nicht getestet: Konversationsansicht mit mehreren Mails.
+
 ## Build und Namen
 
 `./build-xpi.sh` baut `dist/novabird-phishing-<version>.xpi` (ungesigniert) und behält die neueste Version plus die 3 vorherigen.

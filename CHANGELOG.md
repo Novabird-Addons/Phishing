@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.9.2 – Link-Sperre ab dem Öffnen der Mail, auch für andere Link-Arten (2026-11-07)
+
+- Links sind gesperrt, bis die Bewertung da ist. Wer klickt, während die Mail noch geprüft wird, sieht „Die Mail wird noch geprüft …“ und wartet höchstens 5 Sekunden: Ist die Mail unauffällig, öffnet der Link danach ohne Rückfrage; bei „gefährlich“ kommt die bekannte Rückfrage. Bisher öffneten Links einer gefährlichen Mail ohne Rückfrage, solange die Prüfung lief (mit Bildtexterkennung oder KI einige Sekunden).
+- Nach einem Prüffehler, nach Ablauf der Wartezeit oder wenn keine Bewertung möglich ist (mehrere Mails angezeigt) fragt der Schutz: „Diese Mail konnte nicht geprüft werden. Link trotzdem öffnen?“ Bisher blieben Links dann offen.
+- Nicht nur Web-Links: Auch `file:`, `smb:`, `ftp:` und Windows-Protokolle wie `search-ms:` werden so behandelt; frei bleiben nur `mailto:`, `tel:` und Sprungmarken in der Mail. Bei „gefährlich“ öffnet der Schutz nur Web-Links.
+- Die Rückfrage ist ein eigener Dialog in der Mail statt `confirm()`, das im Nachrichtenbereich (z. B. in der Konversationsansicht) unterdrückt wird. Abbrechen ist vorausgewählt.
+- Gemerkte Bewertungen werden beim Anzeigen gegen die Message-ID der Mail geprüft.
+
 ## 0.9.1 – Vertrauen-Liste mit Begründung, Prüffehler sichtbar, lange Mails ganz geprüft (2026-11-03)
 
 ### Haftungshinweis (wie in der Android-Version)
