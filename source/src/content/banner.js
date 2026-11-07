@@ -384,14 +384,16 @@
     if (msg?.type === 'verdictUpdate' && msg.verdict) render(msg.verdict);
   });
 
-  // Texte für die Link-Sperre gleich holen (die Bewertung kann dauern); im Schattenmodus bleibt alles unverändert
-  try {
-    const info = await api.runtime.sendMessage({ type: 'linkInfo' });
+  // Texte für die Link-Sperre gleich holen (die Bewertung kann dauern), ohne auf sie zu warten; im Schattenmodus
+  // bleibt alles unverändert
+  api.runtime.sendMessage({ type: 'linkInfo' }).then((info) => {
     if (info?.ui) state.ui ??= info.ui;
     if (info?.off) { state.status = 'off'; settle(); }
-  } catch { /* dann mit FALLBACK */ }
+  }).catch(() => { /* dann mit FALLBACK */ });
+  // Kommt gar keine Antwort (Hintergrundskript hängt oder läuft nicht), soll das in der Fehlerkonsole stehen
+  const noAnswer = setTimeout(() => console.warn('Novabird-phishing: nach 10 s keine Bewertung vom Hintergrundskript – Links fragen nach'), 10_000);
   let res;
-  try { res = await api.runtime.sendMessage({ type: 'getVerdict' }); } catch { setStatus('unchecked'); return; }
+  try { res = await api.runtime.sendMessage({ type: 'getVerdict' }); } catch { setStatus('unchecked'); return; } finally { clearTimeout(noAnswer); }
   // null: keine Bewertung möglich (z. B. mehrere Mails angezeigt) – Links fragen dann nach
   if (!res) { setStatus('unchecked'); return; }
   if (res.verdict) render(res.verdict);
