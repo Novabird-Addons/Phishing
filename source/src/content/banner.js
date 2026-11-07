@@ -9,7 +9,14 @@
   if (document.documentElement.dataset.ppClaim) return;
   document.documentElement.dataset.ppClaim = api.runtime.id;
 
-  const state = { danger: false, trusted: false, host: null, mode: 'inline', defanged: false };
+  // status für die Link-Sperre (linkpolicy.js): 'pending' bis die Bewertung da ist, dann 'done' oder 'unchecked'
+  const state = { danger: false, trusted: false, host: null, mode: 'inline', defanged: false, status: 'pending' };
+  let settle;
+  const settled = new Promise((r) => { settle = r; });
+  function setStatus(s) {
+    if (state.status !== 'off') state.status = s;
+    settle();
+  }
 
   // Andere Add-ons (z. B. NovaBird-Conversation) ersetzen den Inhalt des Nachrichtendokuments, auch nachträglich
   // (document.body.replaceChildren()). Dabei würde unser Banner gelöscht. Deshalb hängen wir ihn bei Bedarf wieder an:
@@ -96,6 +103,7 @@
   function renderError(ui) {
     state.host?.remove();
     state.danger = false;
+    setStatus('unchecked');
     const host = document.createElement('div');
     host.id = 'phishing-pilot-banner';
     host.dataset.level = 'error';
@@ -122,6 +130,7 @@
     const { level, score, reasons, ui } = payload;
     const danger = level === 'dangerous';
     state.danger = danger;
+    setStatus('done');
 
     // Banner im Shadow-DOM, damit Mail-CSS es nicht verändert
     const host = document.createElement('div');
@@ -249,20 +258,101 @@
     try { a.title = '→ ' + new URL(a.href).hostname; } catch { /* mailto: usw. */ }
   }, true);
 
-  // Bei "gefährlich" Klicks auf Web-Links abfangen (Links- und Mittelklick). Nach Bestätigung öffnet das
-  // Hintergrundskript den Link im Standardbrowser – wie Thunderbird es bei einem normalen Klick auch tut.
+  // Klicks auf Links abfangen (Links- und Mittelklick), Regeln in linkpolicy.js. Gesperrt ist von Anfang an: Solange
+  // die Prüfung läuft, wartet ein Klick bis zu WAIT_MS auf die Bewertung; ist die Mail unauffällig, öffnet der Link
+  // danach ohne Rückfrage. Nach Fehlern oder ohne Bewertung fragt der Schutz nach – mit eigenem Dialog in der Mail:
+  // confirm()/alert() werden im Nachrichtenbereich (z. B. NovaBird-Conversation) still unterdrückt (siehe Vertrauen).
+  // Web-Links öffnet danach das Hintergrundskript im Standardbrowser – ein nachgestellter Klick aus dem Skript wäre
+  // "untrusted" und wird von Thunderbird nicht zuverlässig als Link-Klick behandelt. Andere Schemata (file:, smb: …)
+  // kann nur ein echter Klick öffnen: nach "Öffnen" darf der nächste Klick auf denselben Link durch.
+  const WAIT_MS = 5000;
+  const de = /^de\b/i.test(navigator.language);
+  // bis die Texte vom Hintergrundskript da sind (die ersten Millisekunden)
+  const FALLBACK = de
+    ? { link_title: 'Link öffnen?', link_body: 'Dieser Link führt zu:', link_open: 'Trotzdem öffnen', link_cancel: 'Abbrechen',
+        link_wait: 'Die Mail wird noch geprüft …', link_unchecked: 'Diese Mail konnte nicht geprüft werden. Link trotzdem öffnen?',
+        link_blocked: 'Bei einer gefährlichen Mail öffnet der Schutz nur Web-Links.', link_click_again: 'Geprüft – bitte noch einmal klicken.' }
+    : { link_title: 'Open link?', link_body: 'This link leads to:', link_open: 'Open anyway', link_cancel: 'Cancel',
+        link_wait: 'The message is still being checked …', link_unchecked: 'This message could not be checked. Open the link anyway?',
+        link_blocked: 'For a dangerous message, only web links can be opened.', link_click_again: 'Checked – please click again.' };
+  const text = (k) => state.ui?.[k] ?? FALLBACK[k];
+  const isWeb = (href) => /^https?:/i.test(href);
+  const targetOf = (href) => { try { return new URL(href).hostname || href; } catch { return href; } };
+  const openWeb = (href) => { api.runtime.sendMessage({ type: 'openLink', url: href }).catch(() => {}); };
+
+  // Eigenes Shadow-DOM für Hinweis und Dialog, damit Mail-CSS sie nicht verändert (Inhalte nur über textContent)
+  function overlay(id, html) {
+    const el = document.createElement('div');
+    el.id = id;
+    const root = el.attachShadow({ mode: 'closed' });
+    root.innerHTML = '<style>:host{all:initial}*{font:13px/1.35 system-ui,sans-serif;box-sizing:border-box}' +
+      '.note{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2147483647;padding:6px 12px;border-radius:8px;background:#333;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}' +
+      '.bg{position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center}' +
+      '.box{max-width:min(440px,90vw);padding:14px 16px;border-radius:10px;background:#fff;color:#222;box-shadow:0 6px 24px rgba(0,0,0,.3)}' +
+      'b{display:block;font-weight:600;margin-bottom:6px}code{display:block;font-family:monospace;margin:6px 0 12px;word-break:break-all}' +
+      '.btns{display:flex;gap:8px;justify-content:flex-end}button{padding:4px 12px;border-radius:6px;border:1px solid #bbb;background:#f4f4f4;color:#222;cursor:pointer}' +
+      '</style>' + html;
+    (document.body ?? document.documentElement).append(el);
+    return { el, root };
+  }
+  function note(msg, ms) {
+    const { el, root } = overlay('phishing-pilot-note', '<div class="note"></div>');
+    root.querySelector('.note').textContent = msg;
+    if (ms) setTimeout(() => el.remove(), ms);
+    return el;
+  }
+  // Rückfrage; true = öffnen. Abbrechen ist vorausgewählt, Escape und Klick daneben brechen ab.
+  function askInPage(key, href) {
+    return new Promise((resolve) => {
+      const { el, root } = overlay('phishing-pilot-ask',
+        '<div class="bg"><div class="box" role="dialog" aria-modal="true"><b></b><span></span><code></code>' +
+        '<div class="btns"><button class="no"></button><button class="yes"></button></div></div></div>');
+      root.querySelector('b').textContent = text(key);
+      root.querySelector('span').textContent = text('link_body');
+      root.querySelector('code').textContent = targetOf(href);
+      root.querySelector('.no').textContent = text('link_cancel');
+      root.querySelector('.yes').textContent = text('link_open');
+      const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(false); } };
+      const done = (v) => { el.remove(); document.removeEventListener('keydown', onKey, true); resolve(v); };
+      root.querySelector('.yes').addEventListener('click', () => done(true));
+      root.querySelector('.no').addEventListener('click', () => done(false));
+      root.querySelector('.bg').addEventListener('click', (e) => { if (e.target === e.currentTarget) done(false); });
+      document.addEventListener('keydown', onKey, true);
+      root.querySelector('.no').focus();
+    });
+  }
+
+  async function waitForVerdict() {
+    if (state.status !== 'pending') return;
+    document.documentElement.style.cursor = 'progress';
+    const hint = note(text('link_wait'));
+    await Promise.race([settled, new Promise((r) => setTimeout(r, WAIT_MS))]);
+    hint.remove();
+    document.documentElement.style.cursor = '';
+  }
+  let allowOnce = '';   // Nicht-Web-Link, dessen Öffnen bestätigt wurde: der nächste echte Klick darf durch
+  async function decide(href) {
+    // Zeitlimit abgelaufen: für diesen Klick "ungeprüft"; die Bewertung darf trotzdem später noch kommen
+    const decision = ppLinkPolicy(state.status === 'pending' ? 'unchecked' : state.status, state.danger, href, href);
+    if (decision === 'blockScheme') { note(text('link_blocked'), 4000); return; }
+    if (decision !== 'allow' && !await askInPage(decision === 'confirmDanger' ? 'link_title' : 'link_unchecked', href)) return;
+    if (isWeb(href)) openWeb(href);
+    else { allowOnce = href; note(text('link_click_again'), 4000); }
+  }
+
+  let busy = false;
   function guardLink(ev) {
     if (ev.type === 'auxclick' && ev.button !== 1) return;
     const a = ev.target.closest?.('a[href]');
-    if (!state.danger || !a || !/^https?:/i.test(a.href)) return;
+    if (!a) return;
+    const href = a.href;
+    if (allowOnce && href === allowOnce) { allowOnce = ''; return; }
+    if (ppLinkPolicy(state.status, state.danger, href, a.getAttribute('href')) === 'allow') return;
     ev.preventDefault();
     ev.stopImmediatePropagation();
-    let target = a.href;
-    try { target = new URL(a.href).hostname; } catch { /* unverändert */ }
-    const ui = state.ui;
-    if (confirm(`${ui.link_title}\n\n${ui.link_body}\n${target}`)) {
-      api.runtime.sendMessage({ type: 'openLink', url: a.href }).catch(() => {});
-    }
+    if (busy) return;   // Dialog oder Warten läuft schon
+    busy = true;
+    waitForVerdict().then(() => decide(href)).finally(() => { busy = false; });
   }
   document.addEventListener('click', guardLink, true);
   document.addEventListener('auxclick', guardLink, true);
@@ -290,9 +380,17 @@
     if (msg?.type === 'verdictUpdate' && msg.verdict) render(msg.verdict);
   });
 
+  // Texte für die Link-Sperre gleich holen (die Bewertung kann dauern); im Schattenmodus bleibt alles unverändert
+  try {
+    const info = await api.runtime.sendMessage({ type: 'linkInfo' });
+    if (info?.ui) state.ui ??= info.ui;
+    if (info?.off) { state.status = 'off'; settle(); }
+  } catch { /* dann mit FALLBACK */ }
   let res;
-  try { res = await api.runtime.sendMessage({ type: 'getVerdict' }); } catch { return; }
-  if (!res) return;
+  try { res = await api.runtime.sendMessage({ type: 'getVerdict' }); } catch { setStatus('unchecked'); return; }
+  // null: keine Bewertung möglich (z. B. mehrere Mails angezeigt) – Links fragen dann nach
+  if (!res) { setStatus('unchecked'); return; }
   if (res.verdict) render(res.verdict);
+  else setStatus('done');
   if (res.remote) await scanRemote().catch(() => {});
 })();

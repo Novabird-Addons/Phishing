@@ -1,0 +1,11 @@
+<h2>Novabird-phishing 0.9.2</h2>
+<p><strong>Links are locked from the moment an email opens – for every kind of link.</strong></p>
+<ul>
+  <li><strong>No gap while the check runs:</strong> until now, links in a dangerous email opened without a question during the first seconds, while the check was still running (longer with text recognition in images or the local AI). Now a click during the check waits up to five seconds for the result: harmless emails then open the link without a question, dangerous ones ask first.</li>
+  <li><strong>Unchecked is not safe:</strong> if the check fails, times out or is not possible (several messages shown at once), you are asked “This message could not be checked. Open the link anyway?” instead of the link simply opening.</li>
+  <li><strong>All link types:</strong> besides web links, <code>file:</code>, <code>smb:</code>, <code>ftp:</code> and Windows protocol links such as <code>search-ms:</code> are covered too. Only <code>mailto:</code>, <code>tel:</code> and jumps within the email stay free. For a dangerous email, only web links can be opened.</li>
+  <li><strong>A dialog that always works:</strong> the question is now shown inside the email, with “Cancel” preselected. Thunderbird silently suppresses the usual browser dialog in the message area (for example in conversation views).</li>
+</ul>
+<p>Everything still runs locally – no part of a message leaves your computer or network.</p>
+<p><strong>Installation:</strong> download <code>novabird-phishing-0.9.2.xpi</code> below → Thunderbird: Add-ons and Themes → gear icon → <em>Install Add-on From File</em>.</p>
+<p>🇩🇪 <strong>Kurz auf Deutsch:</strong> Links sind jetzt vom Öffnen der Mail an gesperrt. Wer klickt, während die Mail noch geprüft wird, wartet höchstens fünf Sekunden: Harmlose Mails öffnen den Link danach ohne Rückfrage, gefährliche fragen nach. Scheitert die Prüfung oder ist keine möglich, fragt der Schutz „Diese Mail konnte nicht geprüft werden. Link trotzdem öffnen?“. Das gilt auch für <code>file:</code>-, <code>smb:</code>- und Windows-Protokoll-Links; frei bleiben nur <code>mailto:</code>, <code>tel:</code> und Sprünge innerhalb der Mail. Die Rückfrage erscheint als eigener Dialog in der Mail, „Abbrechen“ ist vorausgewählt.</p>
