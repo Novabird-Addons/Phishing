@@ -548,9 +548,21 @@ function bannerPayload(verdict) {
 }
 
 const SLOW_VERDICT_MS = 10_000;
+// In einem Testaufbau antwortete getDisplayedMessages nie. Dann lieber nach kurzer Zeit "nicht geprüft" (Links fragen
+// nach) als ewig warten. Bewusst kein Ersatz über zuletzt gemeldete Anzeigen (onMessagesDisplayed): kommt die Meldung
+// verspätet, bekäme eine Mail die Bewertung der vorigen – eine Phishing-Mail womöglich "harmlos".
+const DISPLAYED_TIMEOUT_MS = 3000;
 async function displayedMessageId(sender) {
   if (!sender.tab) return null;
-  const shown = await messenger.messageDisplay.getDisplayedMessages(sender.tab.id);
+  let timer;
+  const shown = await Promise.race([
+    messenger.messageDisplay.getDisplayedMessages(sender.tab.id),
+    new Promise((resolve) => { timer = setTimeout(() => resolve(null), DISPLAYED_TIMEOUT_MS); }),
+  ]).finally(() => clearTimeout(timer));
+  if (!shown) {
+    console.warn(`Novabird-phishing: Thunderbird nennt die angezeigte Mail nicht (nach ${DISPLAYED_TIMEOUT_MS / 1000} s) – Mail gilt als nicht geprüft`);
+    return null;
+  }
   return shown.messages.length === 1 ? shown.messages[0].id : null;
 }
 
