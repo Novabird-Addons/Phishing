@@ -445,7 +445,13 @@ lokale KI, Bezug). Der `onMessage`-Listener misst `getVerdict` und `linkInfo` ab
 laden, angezeigte Mail ermitteln, Bewertung) und schreibt nach `SLOW_VERDICT_MS` (10 s) `console.warn` mit Mail-id und
 Schritt, nach dem Ende die Dauer. Antwortet das Hintergrundskript gar nicht, meldet `banner.js` das nach 10 s selbst;
 `linkInfo` wird nicht mehr abgewartet, damit `getVerdict` nicht dahinter hängt. Nachgestellt, aber ohne Hänger: ein
-Posteingang als mbox ohne `.msf` (Warnung `NS_MSG_ERROR_FOLDER_SUMMARY_OUT_OF_DATE` erscheint, bewertet wird trotzdem). Geprüft in Thunderbird 153 mit einer Testkopie, deren Bewertung bei den Adressbüchern
+Posteingang als mbox ohne `.msf` (Warnung `NS_MSG_ERROR_FOLDER_SUMMARY_OUT_OF_DATE` erscheint, bewertet wird trotzdem). Eingegrenzt hat die
+Windows-Desk-Session den Hänger dann auf `messageDisplay.getDisplayedMessages`, das in ihrem Testaufbau (ein langes
+Marionette-Skript, das die Mails auswählt) nie antwortet. `displayedMessageId` wartet darauf jetzt höchstens
+`DISPLAYED_TIMEOUT_MS` (3 s) und gibt dann `null` zurück – die Mail gilt als ungeprüft. Bewusst **kein** Ersatz über
+zuletzt gemeldete Anzeigen (`onMessagesDisplayed`): Käme die Meldung verspätet, bekäme eine Phishing-Mail die Bewertung
+der vorigen, harmlosen Mail und ihre Links wären frei. Geprüft mit einer Testkopie, in der `getDisplayedMessages` nie
+antwortet: Hinweis nach 3 s, Link fragt „nicht geprüft“. Geprüft in Thunderbird 153 mit einer Testkopie, deren Bewertung bei den Adressbüchern
 stehen bleibt: Hinweis erscheint (mit `devtools.console.stdout.content` auch auf stdout), Link fragt nach 5 s
 „nicht geprüft“.
 
