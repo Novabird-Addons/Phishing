@@ -438,6 +438,17 @@ Thunderbird 153 mit Conversation 0.15.6 (Testpaket 06g): Phishing-Karte P über 
 Klick und Mittelklick auf P fragen vor und nach der Bewertung, A ist nach 1,5 s frei. Das frische Testprofil ohne
 Identität bewertete normal (1,5 s); eine hängende Bewertung war dort nicht nachzustellen.
 
+Hängende Bewertung sichtbar machen: In einem Testprofil der Windows-Desk-Session kam nie eine Bewertung (Ursache
+offen, hier nicht nachstellbar; die Sperre scheiterte dort sicher). `computeVerdict` merkt sich in `verdictStep`
+den laufenden Schritt (Mail lesen, Bilder und QR-Codes, Anhänge, Texterkennung, Adressbücher und Absender-Historie,
+lokale KI, Bezug). Der `onMessage`-Listener misst `getVerdict` und `linkInfo` ab Eingang (`req.step`: Einstellungen
+laden, angezeigte Mail ermitteln, Bewertung) und schreibt nach `SLOW_VERDICT_MS` (10 s) `console.warn` mit Mail-id und
+Schritt, nach dem Ende die Dauer. Antwortet das Hintergrundskript gar nicht, meldet `banner.js` das nach 10 s selbst;
+`linkInfo` wird nicht mehr abgewartet, damit `getVerdict` nicht dahinter hängt. Nachgestellt, aber ohne Hänger: ein
+Posteingang als mbox ohne `.msf` (Warnung `NS_MSG_ERROR_FOLDER_SUMMARY_OUT_OF_DATE` erscheint, bewertet wird trotzdem). Geprüft in Thunderbird 153 mit einer Testkopie, deren Bewertung bei den Adressbüchern
+stehen bleibt: Hinweis erscheint (mit `devtools.console.stdout.content` auch auf stdout), Link fragt nach 5 s
+„nicht geprüft“.
+
 ## Build und Namen
 
 `./build-xpi.sh` baut `dist/novabird-phishing-<version>.xpi` (ungesigniert) und behält die neueste Version plus die 3 vorherigen.

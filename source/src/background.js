@@ -419,7 +419,14 @@ function evaluate(messageId) {
   return verdictCache.get(messageId);
 }
 
+// Woran eine laufende Bewertung gerade arbeitet (für den Hinweis bei langsamer Prüfung, siehe getVerdict)
+const verdictStep = new Map();
 async function computeVerdict(messageId) {
+  const step = (s) => verdictStep.set(messageId, s);
+  try { return await computeVerdictSteps(messageId, step); } finally { verdictStep.delete(messageId); }
+}
+async function computeVerdictSteps(messageId, step) {
+  step('Mail lesen');
   const config = await getConfig();
   const [header, headers, full] = await Promise.all([
     messenger.messages.get(messageId),
@@ -427,18 +434,22 @@ async function computeVerdict(messageId) {
     messenger.messages.getFull(messageId),
   ]);
   const extra = remoteExtras.get(messageId);
+  step('Bilder und QR-Codes');
   const images = await loadEmbeddedImages(messageId).catch((e) => { console.warn('Bilder nicht lesbar', e?.message); return []; });
   const qrUrls = [...await findQrUrls(images).catch((e) => { console.warn('QR-Suche fehlgeschlagen', e?.message); return []; }), ...(extra?.qrUrls ?? [])];
+  step('Anhänge');
   const attachmentScan = await scanAttachments(messageId).catch((e) => { console.warn('Anhänge nicht lesbar', e?.message); return {}; });
   const features = buildFeatures({ headers, parts: flattenParts(full), qrUrls, attachmentScan }, await authservConfig(config, header.folder?.accountId));
   let ocrLanguages = extra?.languages ?? [];
   let ocrMs = 0;
   if (config.ocr) {
+    step('Texterkennung (OCR)');
     const ocr = await ocrImages(ocrCandidates(images, features), config.ocrLanguages, { parallel: config.ocrParallel });
     ocrMs = ocr.ms;
     features.imageTexts = { ...ocr.texts, ...(extra?.imageTexts ?? {}) };
     ocrLanguages = [...new Set([...ocr.languages, ...ocrLanguages])];
   } else if (extra) features.imageTexts = { ...extra.imageTexts };
+  step('Adressbücher und Absender-Historie');
   const contacts = await getContacts();
   const idx = await loadSenderIndex();
   if (features.from && trustLevel(idx[features.from.address]) !== 'sent' && !contacts.addresses.has(features.from.address)) {
@@ -453,10 +464,12 @@ async function computeVerdict(messageId) {
   let verdict = analyze(features, ctx, config);
   // KI nur bei Mails mit Hinweisen (unbekannte Absender haben immer mindestens "Neuer Absender"), nicht bei klar roten
   if (config.useNovaBirdAi && verdict.level !== 'dangerous' && verdict.signals.length && !config.trustedSenders.includes(features.from?.address)) {
+    step('lokale KI');
     const ai = await askNovaBird(messageId);
     if (ai) { ctx.ai = ai; verdict = analyze(features, ctx, config); }
   }
   if (relatedCouldHelp(verdict)) {
+    step('Bezug zu früheren Mails');
     const related = await findRelated(header, features, contacts, idx).catch((e) => { console.warn('Bezug-Suche', e?.message); return null; });
     if (related) verdict = analyze(features, { ...ctx, related }, config);
   }
@@ -534,13 +547,16 @@ function bannerPayload(verdict) {
   return { level: verdict.level, score: verdict.score, kind: verdict.signals.some((s) => s.id === 'extortion') ? 'extortion' : null, reasons: reasons(verdict), ui: uiStrings(lang()), ocrLanguages: verdict.ocrLanguages ?? [], ocrMs: verdict.ocrMs ?? 0 };
 }
 
+const SLOW_VERDICT_MS = 10_000;
 async function displayedMessageId(sender) {
   if (!sender.tab) return null;
   const shown = await messenger.messageDisplay.getDisplayedMessages(sender.tab.id);
   return shown.messages.length === 1 ? shown.messages[0].id : null;
 }
 
-async function handleMessage(msg, sender) {
+// req: woran die Anfrage gerade arbeitet (für den Hinweis bei langsamer Bearbeitung im onMessage-Listener)
+async function handleMessage(msg, sender, req = {}) {
+  req.step = 'Einstellungen laden';
   const config = await getConfig();
   if (msg.type === 'showDownloads') { await messenger.downloads.showDefaultFolder(); return true; }
   if (msg.type === 'rescanHistory') { await ensureScan({ force: true }); return true; }   // aus den Einstellungen
@@ -555,8 +571,11 @@ async function handleMessage(msg, sender) {
   }
   // Texte und Modus für die Link-Sperre im Banner, bevor die Bewertung fertig ist
   if (msg.type === 'linkInfo') return { ui: uiStrings(lang()), off: config.mode === 'shadow' };
+  req.step = 'angezeigte Mail ermitteln';
   const id = await displayedMessageId(sender);
   if (id === null) return null;
+  req.id = id;
+  req.step = 'Bewertung';
 
   if (msg.type === 'getVerdict') {
     let verdict;
@@ -624,11 +643,23 @@ async function handleMessage(msg, sender) {
 }
 
 messenger.runtime.onMessage.addListener(async (msg, sender) => {
+  // Hängt eine Anfrage des Banners? Hinweis in der Fehlerkonsole (Extras → Entwicklerwerkzeuge), gemessen ab Eingang –
+  // also auch, wenn es schon vor der eigentlichen Bewertung stockt. Die Link-Sperre bleibt solange zu und fragt nach.
+  const req = { step: 'Anfrage angenommen', id: null };
+  const watched = msg?.type === 'getVerdict' || msg?.type === 'linkInfo';
+  const started = Date.now();
+  const where = () => (req.id !== null && verdictStep.get(req.id)) || req.step;
+  const slow = watched && setTimeout(() => console.warn(`Novabird-phishing: ${msg.type}${req.id !== null ? ` (Mail ${req.id})` : ''} dauert über ${SLOW_VERDICT_MS / 1000} s, gerade: ${where()}`), SLOW_VERDICT_MS);
   try {
-    return await handleMessage(msg ?? {}, sender);
+    return await handleMessage(msg ?? {}, sender, req);
   } catch (e) {
     console.error('PhishingPilot onMessage', msg?.type, e.message, e.stack);
     return null;
+  } finally {
+    if (watched) {
+      clearTimeout(slow);
+      if (Date.now() - started > SLOW_VERDICT_MS) console.warn(`Novabird-phishing: ${msg.type} nach ${Date.now() - started} ms fertig`);
+    }
   }
 });
 
