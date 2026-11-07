@@ -7,6 +7,7 @@
 - Nicht nur Web-Links: Auch `file:`, `smb:`, `ftp:` und Windows-Protokolle wie `search-ms:` werden so behandelt; frei bleiben nur `mailto:`, `tel:` und Sprungmarken in der Mail. Bei „gefährlich“ öffnet der Schutz nur Web-Links.
 - Die Rückfrage ist ein eigener Dialog in der Mail statt `confirm()`, das im Nachrichtenbereich (z. B. in der Konversationsansicht) unterdrückt wird. Abbrechen ist vorausgewählt.
 - Gemerkte Bewertungen werden beim Anzeigen gegen die Message-ID der Mail geprüft.
+- Konversationsansicht (NovaBird-Conversation): Die Bewertung gilt nur für die gewählte Mail. Links in den anderen Mails der Unterhaltung fragen deshalb immer „nicht geprüft“ nach – auch wenn die gewählte Mail harmlos ist. Vorher hätte eine harmlose Antwort die Links einer darüber aufgeklappten Phishing-Mail freigegeben.
 
 ## 0.9.1 – Vertrauen-Liste mit Begründung, Prüffehler sichtbar, lange Mails ganz geprüft (2026-11-03)
 

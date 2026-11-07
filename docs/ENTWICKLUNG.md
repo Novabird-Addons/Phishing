@@ -427,6 +427,17 @@ vorab über `linkInfo` (Schattenmodus: `off`, nichts sichtbar). `getVerdict` ver
 Bewertung): Klick während der Prüfung bei gefährlicher und unauffälliger Mail, `file:`/`mailto:` nach „gefährlich“,
 Prüffehler mit Abbrechen und Öffnen – 4/4. Nicht getestet: Konversationsansicht mit mehreren Mails.
 
+Konversationsansicht (Befund der Windows-Desk-Session): Mit NovaBird-Conversation stehen mehrere Mails in einem
+Dokument (`#nbc-root`, je Mail `.nbc-card`), `displayedMessageId` liefert aber nur die gewählte. Eine harmlose
+gewählte Antwort gab so die Links einer aufgeklappten Phishing-Mail frei. `ppCardStatus` (linkpolicy.js) macht
+Links außerhalb von `.nbc-card.selected` zu `unchecked` – sofort Rückfrage, auch während `pending`, auch beim
+Mittelklick. Conversation sagt zu, `#nbc-root`, `.nbc-card` und `.selected` stabil zu halten; Mail-Inhalte können
+sie nicht setzen (Conversation übernimmt aus Mails nur `href`, `colspan`, `rowspan` – deshalb tragen Links dort
+auch keine `class`). Bewusst nicht je Karte nach Message-ID bewertet: die setzt der Absender selbst. Getestet in
+Thunderbird 153 mit Conversation 0.15.6 (Testpaket 06g): Phishing-Karte P über gewählter harmloser Antwort A –
+Klick und Mittelklick auf P fragen vor und nach der Bewertung, A ist nach 1,5 s frei. Das frische Testprofil ohne
+Identität bewertete normal (1,5 s); eine hängende Bewertung war dort nicht nachzustellen.
+
 ## Build und Namen
 
 `./build-xpi.sh` baut `dist/novabird-phishing-<version>.xpi` (ungesigniert) und behält die neueste Version plus die 3 vorherigen.

@@ -7,6 +7,14 @@
 // Ergebnis: 'allow' | 'wait' | 'confirmDanger' | 'confirmUnchecked' | 'blockScheme'
 // Frei bleiben nur mailto:, tel: und Sprungmarken in der Mail selbst; alle anderen Schemata (file:, smb:, ms-…)
 // zählen wie Web-Links – bei "gefährlich" öffnet der Schutz aber nur http(s).
+// Konversationsansicht (NovaBird-Conversation, #nbc-root): mehrere Mails stehen im selben Dokument, die Bewertung
+// gilt aber nur für die gewählte Karte (.nbc-card.selected = die Mail, die Thunderbird als angezeigt meldet). Links
+// in anderen Karten gelten deshalb als ungeprüft – auch wenn die gewählte Mail harmlos ist oder noch geprüft wird.
+// Mail-Inhalte können diese Klassen nicht setzen (Conversation übernimmt aus Mails nur href, colspan, rowspan).
+var ppCardStatus = function (status, inConversation, inSelectedCard) {
+  return status !== 'off' && inConversation && !inSelectedCard ? 'unchecked' : status;
+};
+
 var ppLinkPolicy = function (status, danger, href, rawHref) {
   if (status === 'off') return 'allow';
   if (String(rawHref ?? '').trim().startsWith('#')) return 'allow';
