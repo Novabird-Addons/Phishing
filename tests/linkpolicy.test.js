@@ -39,6 +39,20 @@ test('Link-Sperre: alle Schemata außer mailto/tel und Sprungmarken', () => {
   assert.equal(policy('pending', false, 'imap://x/#oben', ' #oben'), 'allow');
 });
 
+test('Link-Sperre: in der Konversationsansicht gilt die Bewertung nur für die gewählte Karte', () => {
+  const card = (status, inConv, selected) => ctx.ppCardStatus(status, inConv, selected);
+  // Link in einer anderen Karte: ungeprüft, auch wenn die gewählte Mail harmlos ist oder noch geprüft wird
+  for (const s of ['done', 'pending', 'unchecked']) assert.equal(card(s, true, false), 'unchecked', s);
+  assert.equal(policy(card('done', true, false), false, 'https://evil.example/'), 'confirmUnchecked');
+  assert.equal(policy(card('pending', true, false), false, 'https://evil.example/'), 'confirmUnchecked');   // nicht erst warten
+  // gewählte Karte und normale Ansicht: Bewertung gilt; Schattenmodus bleibt unsichtbar
+  assert.equal(card('done', true, true), 'done');
+  assert.equal(card('pending', false, false), 'pending');
+  assert.equal(card('off', true, false), 'off');
+  // mailto/tel bleiben auch in fremden Karten frei
+  assert.equal(policy(card('done', true, false), false, 'mailto:a@b.example'), 'allow');
+});
+
 test('Link-Sperre: Texte auf Deutsch und Englisch', () => {
   for (const lang of ['de', 'en']) {
     const ui = uiStrings(lang);

@@ -322,8 +322,8 @@
     });
   }
 
-  async function waitForVerdict() {
-    if (state.status !== 'pending') return;
+  async function waitForVerdict(foreign) {
+    if (foreign || state.status !== 'pending') return;
     document.documentElement.style.cursor = 'progress';
     const hint = note(text('link_wait'));
     await Promise.race([settled, new Promise((r) => setTimeout(r, WAIT_MS))]);
@@ -331,9 +331,10 @@
     document.documentElement.style.cursor = '';
   }
   let allowOnce = '';   // Nicht-Web-Link, dessen Öffnen bestätigt wurde: der nächste echte Klick darf durch
-  async function decide(href) {
+  async function decide(href, foreign) {
     // Zeitlimit abgelaufen: für diesen Klick "ungeprüft"; die Bewertung darf trotzdem später noch kommen
-    const decision = ppLinkPolicy(state.status === 'pending' ? 'unchecked' : state.status, state.danger, href, href);
+    const status = foreign || state.status === 'pending' ? 'unchecked' : state.status;
+    const decision = ppLinkPolicy(status, state.danger, href, href);
     if (decision === 'blockScheme') { note(text('link_blocked'), 4000); return; }
     if (decision !== 'allow' && !await askInPage(decision === 'confirmDanger' ? 'link_title' : 'link_unchecked', href)) return;
     if (isWeb(href)) openWeb(href);
@@ -347,12 +348,15 @@
     if (!a) return;
     const href = a.href;
     if (allowOnce && href === allowOnce) { allowOnce = ''; return; }
-    if (ppLinkPolicy(state.status, state.danger, href, a.getAttribute('href')) === 'allow') return;
+    // Link in einer anderen Karte der Konversationsansicht: die Bewertung gilt nicht für ihn (siehe linkpolicy.js)
+    const status = ppCardStatus(state.status, !!a.closest('#nbc-root'), !!a.closest('.nbc-card.selected'));
+    const foreign = status === 'unchecked' && state.status !== 'unchecked';
+    if (ppLinkPolicy(status, state.danger, href, a.getAttribute('href')) === 'allow') return;
     ev.preventDefault();
     ev.stopImmediatePropagation();
     if (busy) return;   // Dialog oder Warten läuft schon
     busy = true;
-    waitForVerdict().then(() => decide(href)).finally(() => { busy = false; });
+    waitForVerdict(foreign).then(() => decide(href, foreign)).finally(() => { busy = false; });
   }
   document.addEventListener('click', guardLink, true);
   document.addEventListener('auxclick', guardLink, true);
